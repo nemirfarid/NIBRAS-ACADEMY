@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   install-build:
@@ -19,14 +19,6 @@ jobs:
           test -f NIBRAS_ACADEMY_SOURCE.zip
           unzip -o NIBRAS_ACADEMY_SOURCE.zip -d .
           rm NIBRAS_ACADEMY_SOURCE.zip
-
-      - name: Commit extracted source
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: install NIBRAS ACADEMY starter" || echo "No changes"
-          git push
 
       - name: Set up Java
         uses: actions/setup-java@v4
