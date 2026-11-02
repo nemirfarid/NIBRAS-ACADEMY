@@ -44,6 +44,12 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
     if (!ok && mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t('Impossible d’ouvrir la vidéo.', 'تعذر فتح الفيديو.', 'Could not open video.'))));
   }
   Future<void> _print() async {
+    if (lang == 'ar') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('نسخة PDF العربية قيد التحضير.')),
+      );
+      return;
+    }
     if (printing) return;
     setState(() => printing = true);
     try { await NibrasLessonPdfService.printLesson(context: context, lesson: nibras1ApMathLessons.first, languageCode: lang); }
