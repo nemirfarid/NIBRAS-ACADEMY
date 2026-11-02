@@ -1,4 +1,6 @@
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OneApMathAssessmentPage extends StatefulWidget {
   final String language;
@@ -20,6 +22,9 @@ class _OneApMathAssessmentPageState
   int? selectedAnswer;
   bool answered = false;
   bool finished = false;
+  bool saving = false;
+  int bestScore = 0;
+  int attempts = 0;
 
   final List<_MathQuestion> questions = [
     _MathQuestion(
@@ -113,6 +118,69 @@ class _OneApMathAssessmentPageState
     return question.fr;
   }
 
+  Future<void> loadResults() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+
+    setState(() {
+      bestScore = prefs.getInt('nibras_1ap_math_best_score') ?? 0;
+      attempts = prefs.getInt('nibras_1ap_math_attempts') ?? 0;
+    });
+  }
+
+  Future<void> saveResult() async {
+    if (saving) return;
+
+    setState(() {
+      saving = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final previousBest =
+          prefs.getInt('nibras_1ap_math_best_score') ?? 0;
+      final previousAttempts =
+          prefs.getInt('nibras_1ap_math_attempts') ?? 0;
+
+      final newBest = score > previousBest ? score : previousBest;
+
+      await prefs.setInt('nibras_1ap_math_best_score', newBest);
+      await prefs.setInt(
+        'nibras_1ap_math_attempts',
+        previousAttempts + 1,
+      );
+      await prefs.setInt('nibras_1ap_math_last_score', score);
+      await prefs.setString(
+        'nibras_1ap_math_last_date',
+        DateTime.now().toIso8601String(),
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        bestScore = newBest;
+        attempts = previousAttempts + 1;
+        saving = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        saving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            tr(
+              'Impossible d’enregistrer le résultat.',
+              'تعذر حفظ النتيجة.',
+              'Could not save the result.',
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
   void checkAnswer() {
     if (selectedAnswer == null || answered) return;
 
@@ -124,7 +192,7 @@ class _OneApMathAssessmentPageState
     });
   }
 
-  void nextQuestion() {
+  Future<void> nextQuestion() async {
     if (currentQuestion < questions.length - 1) {
       setState(() {
         currentQuestion++;
@@ -135,6 +203,7 @@ class _OneApMathAssessmentPageState
       setState(() {
         finished = true;
       });
+      await saveResult();
     }
   }
 
@@ -146,6 +215,12 @@ class _OneApMathAssessmentPageState
       answered = false;
       finished = false;
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadResults();
   }
 
   @override
@@ -296,7 +371,11 @@ class _OneApMathAssessmentPageState
             ),
             child: Text(
               selectedAnswer == question.correct
-                  ? tr('Bravo ! Bonne réponse.', 'أحسنت! إجابة صحيحة.', 'Well done! Correct answer.')
+                  ? tr(
+                      'Bravo ! Bonne réponse.',
+                      'أحسنت! إجابة صحيحة.',
+                      'Well done! Correct answer.',
+                    )
                   : tr(
                       'La bonne réponse est : ${question.answers[question.correct]}',
                       'الإجابة الصحيحة هي: ${question.answers[question.correct]}',
@@ -329,7 +408,11 @@ class _OneApMathAssessmentPageState
             child: Text(
               answered
                   ? tr('Question suivante', 'السؤال التالي', 'Next question')
-                  : tr('Vérifier ma réponse', 'تحقق من إجابتي', 'Check my answer'),
+                  : tr(
+                      'Vérifier ma réponse',
+                      'تحقق من إجابتي',
+                      'Check my answer',
+                    ),
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
@@ -342,7 +425,7 @@ class _OneApMathAssessmentPageState
   }
 
   Widget _buildResult() {
-    final percentage = (score * 10).toInt();
+    final percentage = score * 10;
 
     return Center(
       child: SingleChildScrollView(
@@ -357,7 +440,11 @@ class _OneApMathAssessmentPageState
             ),
             const SizedBox(height: 20),
             Text(
-              tr('Évaluation terminée !', 'انتهى التقييم!', 'Assessment completed!'),
+              tr(
+                'Évaluation terminée !',
+                'انتهى التقييم!',
+                'Assessment completed!',
+              ),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 25,
@@ -398,6 +485,30 @@ class _OneApMathAssessmentPageState
               ),
             ),
             const SizedBox(height: 22),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _resultLine(
+                      tr('Meilleur score', 'أفضل نتيجة', 'Best score'),
+                      '$bestScore / 10',
+                    ),
+                    const Divider(),
+                    _resultLine(
+                      tr('Nombre de tentatives', 'عدد المحاولات', 'Attempts'),
+                      '$attempts',
+                    ),
+                    if (saving)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 10),
+                        child: LinearProgressIndicator(),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(
               score >= 8
                   ? tr('Excellent travail !', 'عمل ممتاز!', 'Excellent work!')
@@ -440,6 +551,19 @@ class _OneApMathAssessmentPageState
           ],
         ),
       ),
+    );
+  }
+
+  Widget _resultLine(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(child: Text(label)),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ],
     );
   }
 }
