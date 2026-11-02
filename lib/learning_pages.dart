@@ -1,7 +1,9 @@
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '1ap_math_curriculum.dart';
+import '1ap_math_assessment.dart';
 
 bool _isAp1Math(String level, String subject) {
   final l = level.toLowerCase().replaceAll(' ', '');
@@ -83,6 +85,47 @@ class ChaptersPage extends StatelessWidget {
                     ),
             ),
             const SizedBox(height: 16),
+
+            // Évaluation générale du parcours 1AP Mathématiques.
+            if (pilot)
+              Card(
+                color: const Color(0xffe7f0ff),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.quiz_rounded,
+                    color: Color(0xff0756c8),
+                    size: 30,
+                  ),
+                  title: Text(
+                    t(
+                      'Évaluation générale',
+                      'التقييم العام',
+                      'Final assessment',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    t(
+                      '10 questions • Résultat immédiat',
+                      '10 أسئلة • نتيجة فورية',
+                      '10 questions • Instant results',
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => OneApMathAssessmentPage(
+                          language: locale.languageCode,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            const SizedBox(height: 8),
             ...chapters.asMap().entries.map((entry) {
               return Card(
                 child: ListTile(
