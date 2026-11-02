@@ -387,6 +387,8 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
             ),
           ),
           _section(labels.$6, lesson.remember(lang)),
+          const SizedBox(height: 8),
+          NibrasPracticeWorkshop(lesson: lesson, languageCode: lang),
         ],
       ),
     );
@@ -557,4 +559,111 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
           ),
         ),
       );
+}
+
+
+/// Atelier de maîtrise hors ligne : défis progressifs et correction immédiate.
+class NibrasPracticeWorkshop extends StatefulWidget {
+  const NibrasPracticeWorkshop({super.key, required this.lesson, required this.languageCode});
+  final NibrasLessonContent lesson;
+  final String languageCode;
+  @override
+  State<NibrasPracticeWorkshop> createState() => _NibrasPracticeWorkshopState();
+}
+
+class _NibrasPracticeWorkshopState extends State<NibrasPracticeWorkshop> {
+  int index = 0;
+  int score = 0;
+  int? choice;
+  bool checked = false;
+  String get lang => widget.languageCode.toLowerCase().startsWith('ar') ? 'ar' : widget.languageCode.toLowerCase().startsWith('en') ? 'en' : 'fr';
+  String tr(String fr, String ar, String en) => lang == 'ar' ? ar : lang == 'en' ? en : fr;
+
+  List<_NibrasDrill> get drills {
+    switch (widget.lesson.id) {
+      case '1ap-math-nombres-1-5':
+        return [
+          _NibrasDrill(['Combien font 2 objets et encore 1 ?', 'كم يساوي عنصران وعنصر آخر؟', 'How many are 2 objects and 1 more?'], [['2','3','4'],['2','3','4'],['2','3','4']], 1, ['2 puis 1 de plus : 3.', '2 ثم عنصر واحد: 3.', '2 and 1 more make 3.']),
+          _NibrasDrill(['Quel nombre vient après 3 ?', 'ما العدد الذي يأتي بعد 3؟', 'Which number comes after 3?'], [['2','4','5'],['2','4','5'],['2','4','5']], 1, ['La suite est 1, 2, 3, 4, 5.', 'الترتيب هو 1، 2، 3، 4، 5.', 'The sequence is 1, 2, 3, 4, 5.']),
+        ];
+      case '1ap-math-espace':
+        return [
+          _NibrasDrill(['Le crayon est dans la trousse. Où est-il ?', 'القلم داخل المقلمة. أين يوجد؟', 'The pencil is in the pencil case. Where is it?'], [['Dans','Sous','Derrière'],['داخل','تحت','خلف'],['Inside','Under','Behind']], 0, ['« Dans » signifie à l’intérieur.', '«داخل» تعني في باطن الشيء.', '“Inside” means within something.']),
+          _NibrasDrill(['Quel mot est le contraire de « devant » ?', 'ما عكس كلمة «أمام»؟', 'What is the opposite of “in front”?'], [['Sur','Derrière','Près'],['فوق','خلف','قريب'],['On','Behind','Near']], 1, ['Devant et derrière sont opposés.', 'أمام وخلف موقعان متعاكسان.', 'In front and behind are opposites.']),
+        ];
+      case '1ap-math-nombres-6-9':
+        return [
+          _NibrasDrill(['Quel nombre vient après 6 ?', 'ما العدد الذي يأتي بعد 6؟', 'Which number comes after 6?'], [['5','7','9'],['5','7','9'],['5','7','9']], 1, ['Après 6, on dit 7.', 'بعد 6 نقول 7.', 'After 6 comes 7.']),
+          _NibrasDrill(['Combien de fleurs vois-tu ? 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼', 'كم زهرة ترى؟ 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼', 'How many flowers? 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼'], [['8','9','10'],['8','9','10'],['8','9','10']], 1, ['Il y a 9 fleurs.', 'هناك 9 زهرات.', 'There are 9 flowers.']),
+        ];
+      case '1ap-math-zero':
+        return [
+          _NibrasDrill(['Une boîte vide contient combien de cubes ?', 'كم مكعباً في علبة فارغة؟', 'How many cubes are in an empty box?'], [['0','1','2'],['0','1','2'],['0','1','2']], 0, ['Aucun objet correspond à 0.', 'عدم وجود أي عنصر يعني 0.', 'No objects means 0.']),
+          _NibrasDrill(['Quel symbole représente zéro ?', 'ما الرمز الذي يمثل الصفر؟', 'Which symbol represents zero?'], [['6','0','9'],['6','0','9'],['6','0','9']], 1, ['Le symbole du zéro est 0.', 'رمز الصفر هو 0.', 'The symbol for zero is 0.']),
+        ];
+      default:
+        return [
+          _NibrasDrill(['Quel nombre vient après 9 ?', 'ما العدد الذي يأتي بعد 9؟', 'Which number comes after 9?'], [['8','10','7'],['8','10','7'],['8','10','7']], 1, ['10 vient juste après 9.', 'يأتي 10 مباشرة بعد 9.', '10 comes just after 9.']),
+          _NibrasDrill(['Combien faut-il ajouter à 9 pour obtenir 10 ?', 'كم نضيف إلى 9 لنحصل على 10؟', 'How many must we add to 9 to make 10?'], [['1','2','0'],['1','2','0'],['1','2','0']], 0, ['9 plus 1 donne 10.', '9 زائد 1 يساوي 10.', '9 plus 1 equals 10.']),
+        ];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = drills;
+    final item = items[index];
+    final langIndex = lang == 'ar' ? 1 : lang == 'en' ? 2 : 0;
+    final options = item.options[langIndex];
+    final correct = choice == item.answer;
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.explore_rounded, color: Color(0xff3157c8)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(tr('Défis du jeune explorateur', 'تحديات المستكشف الصغير', 'Young explorer challenges'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
+            Text((index + 1).toString() + '/' + items.length.toString()),
+          ]),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(value: (index + 1) / items.length),
+          const SizedBox(height: 14),
+          Text(item.question[langIndex], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          for (int i = 0; i < options.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: OutlinedButton(
+                onPressed: checked ? null : () => setState(() => choice = i),
+                style: OutlinedButton.styleFrom(side: BorderSide(color: checked && i == item.answer ? Colors.green : choice == i ? const Color(0xff3157c8) : Colors.black26)),
+                child: Text(options[i]),
+              ),
+            ),
+          if (checked) ...[
+            Text(correct ? tr('Bravo ! Bonne réponse.', 'أحسنت! إجابة صحيحة.', 'Well done! Correct.') : tr('Observe la correction et poursuis.', 'لاحظ التصحيح ثم تابع.', 'Study the correction and continue.'), style: TextStyle(fontWeight: FontWeight.bold, color: correct ? Colors.green : Colors.deepOrange)),
+            Text(item.explanation[langIndex]),
+          ],
+          const SizedBox(height: 10),
+          if (!checked)
+            FilledButton(onPressed: choice == null ? null : () => setState(() { checked = true; if (correct) score++; }), child: Text(tr('Vérifier ma réponse', 'تحقق من إجابتي', 'Check my answer')))
+          else if (index < items.length - 1)
+            FilledButton(onPressed: () => setState(() { index++; choice = null; checked = false; }), child: Text(tr('Défi suivant', 'التحدي التالي', 'Next challenge')))
+          else ...[
+            Text(tr('Résultat : ' + score.toString() + '/' + items.length.toString(), 'النتيجة: ' + score.toString() + '/' + items.length.toString(), 'Score: ' + score.toString() + '/' + items.length.toString()), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            OutlinedButton.icon(onPressed: () => setState(() { index = 0; score = 0; choice = null; checked = false; }), icon: const Icon(Icons.refresh_rounded), label: Text(tr('Recommencer', 'إعادة المحاولة', 'Try again'))),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+class _NibrasDrill {
+  const _NibrasDrill(this.question, this.options, this.answer, this.explanation);
+  final List<String> question;
+  final List<List<String>> options;
+  final int answer;
+  final List<String> explanation;
 }
