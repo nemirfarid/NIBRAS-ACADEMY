@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 
 /// Contenus pilotes originaux pour le parcours 1AP – Mathématiques.
 /// À confronter au manuel ONPS de l'année scolaire avant publication
@@ -210,6 +211,58 @@ class NibrasLessonPreview extends StatefulWidget {
 class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   int? selected;
   bool checked = false;
+  VideoPlayerController? _videoController;
+  bool _videoLoading = true;
+  bool _videoFailed = false;
+
+  String get _lang {
+    final code = widget.languageCode.toLowerCase();
+    if (code.startsWith('ar')) return 'ar';
+    if (code.startsWith('en')) return 'en';
+    return 'fr';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  @override
+  void didUpdateWidget(covariant NibrasLessonPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.lesson.id != widget.lesson.id ||
+        oldWidget.languageCode != widget.languageCode) {
+      _videoController?.dispose();
+      _videoLoading = true;
+      _videoFailed = false;
+      _initVideo();
+    }
+  }
+
+  Future<void> _initVideo() async {
+    final controller = VideoPlayerController.asset(
+      'assets/videos/' + widget.lesson.id + '_' + _lang + '.mp4',
+    );
+    _videoController = controller;
+    try {
+      await controller.initialize();
+      if (!mounted) return;
+      setState(() => _videoLoading = false);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _videoLoading = false;
+        _videoFailed = true;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,6 +290,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
           _section(labels.$1, lesson.objective(lang)),
           _section(labels.$2, lesson.course(lang)),
           _section(labels.$3, lesson.example(lang)),
+          _videoCard(lang),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -300,6 +354,22 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
         ],
       ),
     );
+  }
+
+  Widget _videoCard(String language) {
+    final controller = _videoController;
+    final title = language == 'ar' ? 'فيديو الدرس باللغة العربية' : language == 'en' ? 'Lesson video in English' : 'Vidéo du cours en français';
+    final message = language == 'ar' ? 'فيديو مدمج يعمل دون إنترنت' : language == 'en' ? 'Offline video included in the app' : 'Vidéo intégrée, disponible hors connexion';
+    return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(padding: const EdgeInsets.all(14), child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold))),
+      AspectRatio(aspectRatio: 16 / 9, child: _videoLoading ? const Center(child: CircularProgressIndicator()) : _videoFailed || controller == null || !controller.value.isInitialized ? Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(language == 'ar' ? 'تعذر تحميل فيديو هذا الدرس.' : language == 'en' ? 'This lesson video could not be loaded.' : 'Impossible de charger la vidéo de cette leçon.', textAlign: TextAlign.center))) : VideoPlayer(controller)),
+      if (!_videoLoading && !_videoFailed && controller != null && controller.value.isInitialized) VideoProgressIndicator(controller, allowScrubbing: true, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+      if (!_videoLoading && !_videoFailed && controller != null && controller.value.isInitialized) Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        IconButton(tooltip: language == 'ar' ? 'إعادة' : language == 'en' ? 'Restart' : 'Recommencer', onPressed: () async { await controller.seekTo(Duration.zero); await controller.play(); if (mounted) setState(() {}); }, icon: const Icon(Icons.replay)),
+        FilledButton.icon(onPressed: () async { if (controller.value.isPlaying) { await controller.pause(); } else { if (controller.value.position >= controller.value.duration) await controller.seekTo(Duration.zero); await controller.play(); } if (mounted) setState(() {}); }, icon: Icon(controller.value.isPlaying ? Icons.pause : Icons.play_arrow), label: Text(controller.value.isPlaying ? (language == 'ar' ? 'إيقاف مؤقت' : 'Pause') : (language == 'ar' ? 'تشغيل الفيديو' : language == 'en' ? 'Play video' : 'Lire la vidéo'))),
+      ]),
+      Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 14), child: Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
+    ]));
   }
 
   Widget _section(String title, String body) => Card(
