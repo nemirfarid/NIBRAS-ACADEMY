@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,6 +14,10 @@ bool _isAp1Math(String level, String subject) {
 
   final math = s.contains('math') || s.contains('رياضيات');
   return firstPrimary && math;
+}
+
+String nibrasPilotProgressKey(String level, String lessonId) {
+  return 'lesson_done_${level}_$lessonId';
 }
 
 class ChaptersPage extends StatelessWidget {
@@ -155,8 +158,25 @@ class LessonPage extends StatefulWidget {
 class _LessonPageState extends State<LessonPage> {
   bool completed = false;
 
-  String get progressKey =>
+  String get legacyProgressKey =>
       'lesson_done_${widget.level}_${widget.subject}_${widget.chapter}';
+
+  String get progressKey {
+    final lesson = pilotLesson;
+    if (lesson == null) return legacyProgressKey;
+
+    return nibrasPilotProgressKey(widget.level, lesson.id);
+  }
+
+  List<String> get legacyProgressKeys {
+    final lesson = pilotLesson;
+    if (lesson == null) return [legacyProgressKey];
+
+    return [
+      for (final language in ['fr', 'ar', 'en'])
+        'lesson_done_${widget.level}_${widget.subject}_${lesson.title(language)}',
+    ];
+  }
 
   String t(String fr, String ar, String en) {
     if (widget.locale.languageCode == 'ar') return ar;
@@ -185,10 +205,24 @@ class _LessonPageState extends State<LessonPage> {
   Future<void> _loadProgress() async {
     final prefs = await SharedPreferences.getInstance();
 
+    final savedProgress = prefs.getBool(progressKey);
+    bool? legacyProgress;
+
+    if (savedProgress == null) {
+      for (final key in legacyProgressKeys) {
+        legacyProgress = prefs.getBool(key);
+        if (legacyProgress != null) break;
+      }
+
+      if (legacyProgress != null) {
+        await prefs.setBool(progressKey, legacyProgress);
+      }
+    }
+
     if (!mounted) return;
 
     setState(() {
-      completed = prefs.getBool(progressKey) ?? false;
+      completed = savedProgress ?? legacyProgress ?? false;
     });
   }
 
