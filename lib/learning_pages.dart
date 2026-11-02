@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '1ap_math_curriculum.dart';
 import '1ap_math_assessment.dart';
 import '1ap_math_adventure_course.dart';
+import '1ap_math_premium_experience.dart';
 import 'lesson_pdf_service.dart';
 
 bool _isAp1Math(String level, String subject) {
@@ -162,8 +163,9 @@ class ChaptersPage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => pilot && entry.key == 0
-                            ? OneApNumbersAdventurePage(
+                        builder: (_) => pilot
+                            ? NibrasPremiumMathLessonPage(
+                                lesson: nibras1ApMathLessons[entry.key],
                                 languageCode: locale.languageCode,
                               )
                             : LessonPage(
