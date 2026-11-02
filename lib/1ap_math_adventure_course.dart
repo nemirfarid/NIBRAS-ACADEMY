@@ -49,8 +49,31 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
     if (mounted) setState(() => completed = true);
   }
   Future<void> _video(String url) async {
-    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    if (!ok && mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t('Impossible d’ouvrir la vidéo.', 'تعذر فتح الفيديو.', 'Could not open video.'))));
+    final uri = Uri.parse(url);
+    var opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened) {
+        opened = await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (_) {
+      try {
+        opened = await launchUrl(uri, mode: LaunchMode.platformDefault);
+      } catch (_) {
+        opened = false;
+      }
+    }
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(t(
+            'Impossible d’ouvrir YouTube. Vérifie ta connexion Internet.',
+            'تعذر فتح يوتيوب. تحقق من اتصال الإنترنت.',
+            'Could not open YouTube. Check your internet connection.',
+          )),
+        ),
+      );
+    }
   }
   Future<void> _print() async {
     if (lang == 'ar') {
