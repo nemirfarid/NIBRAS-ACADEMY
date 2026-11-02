@@ -1,5 +1,21 @@
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '1ap_math_curriculum.dart';
+
+bool _isAp1Math(String level, String subject) {
+  final l = level.toLowerCase().replaceAll(' ', '');
+  final s = subject.toLowerCase();
+
+  final firstPrimary = l == '1ap' ||
+      l.contains('1ap') ||
+      l.contains('الأولى ابتدائي') ||
+      l.contains('السنة الأولى ابتدائي');
+
+  final math = s.contains('math') || s.contains('رياضيات');
+  return firstPrimary && math;
+}
 
 class ChaptersPage extends StatelessWidget {
   const ChaptersPage({
@@ -21,23 +37,17 @@ class ChaptersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chapters = [
-      t(
-        'Découvrir les notions',
-        'اكتشاف المفاهيم',
-        'Discover the concepts',
-      ),
-      t(
-        'Comprendre et appliquer',
-        'الفهم والتطبيق',
-        'Understand and apply',
-      ),
-      t(
-        'S’entraîner et réviser',
-        'التدرب والمراجعة',
-        'Practice and review',
-      ),
-    ];
+    final pilot = _isAp1Math(level, subject);
+
+    final chapters = pilot
+        ? nibras1ApMathLessons
+            .map((lesson) => lesson.title(locale.languageCode))
+            .toList()
+        : [
+            t('Découvrir les notions', 'اكتشاف المفاهيم', 'Discover the concepts'),
+            t('Comprendre et appliquer', 'الفهم والتطبيق', 'Understand and apply'),
+            t('S’entraîner et réviser', 'التدرب والمراجعة', 'Practice and review'),
+          ];
 
     return Directionality(
       textDirection: locale.languageCode == 'ar'
@@ -57,14 +67,17 @@ class ChaptersPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              t(
-                'Parcours pédagogique de démonstration. '
-                'Les contenus seront ajoutés après vérification du programme.',
-                'مسار تعليمي تجريبي. '
-                'ستُضاف الدروس بعد التحقق من البرنامج.',
-                'Learning path preview. '
-                'Lessons will be added after curriculum verification.',
-              ),
+              pilot
+                  ? t(
+                      'Parcours pilote de mathématiques 1AP : cinq leçons avec cours, exemple, exercice corrigé et résumé.',
+                      'مسار تجريبي في رياضيات السنة الأولى: خمسة دروس مع شرح ومثال وتمرين مصحح وملخص.',
+                      '1AP mathematics pilot: five lessons with explanations, examples, corrected exercises and summaries.',
+                    )
+                  : t(
+                      'Parcours pédagogique de démonstration. Les contenus seront ajoutés après vérification du programme.',
+                      'مسار تعليمي تجريبي. ستُضاف الدروس بعد التحقق من البرنامج.',
+                      'Learning path preview. Lessons will be added after curriculum verification.',
+                    ),
             ),
             const SizedBox(height: 16),
             ...chapters.asMap().entries.map((entry) {
@@ -85,11 +98,17 @@ class ChaptersPage extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   subtitle: Text(
-                    t(
-                      'Leçons en préparation',
-                      'الدروس قيد الإعداد',
-                      'Lessons being prepared',
-                    ),
+                    pilot
+                        ? t(
+                            'Cours • exemple • exercice corrigé',
+                            'درس • مثال • تمرين مصحح',
+                            'Lesson • example • corrected exercise',
+                          )
+                        : t(
+                            'Leçons en préparation',
+                            'الدروس قيد الإعداد',
+                            'Lessons being prepared',
+                          ),
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () {
@@ -145,6 +164,18 @@ class _LessonPageState extends State<LessonPage> {
     return fr;
   }
 
+  NibrasLessonContent? get pilotLesson {
+    if (!_isAp1Math(widget.level, widget.subject)) return null;
+
+    for (final lesson in nibras1ApMathLessons) {
+      if (lesson.title(widget.locale.languageCode) == widget.chapter) {
+        return lesson;
+      }
+    }
+
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -174,113 +205,135 @@ class _LessonPageState extends State<LessonPage> {
 
   @override
   Widget build(BuildContext context) {
+    final lesson = pilotLesson;
+
     return Directionality(
       textDirection: widget.locale.languageCode == 'ar'
           ? TextDirection.rtl
           : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(
-            t('Espace leçon', 'فضاء الدرس', 'Lesson space'),
-          ),
+          title: Text(t('Espace leçon', 'فضاء الدرس', 'Lesson space')),
         ),
-        body: ListView(
-          padding: const EdgeInsets.all(18),
-          children: [
-            Text(
-              widget.level,
-              style: const TextStyle(
-                color: Color(0xffb27a12),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              widget.subject,
-              style: const TextStyle(
-                fontSize: 23,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.chapter,
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 18),
-
-            _section(
-              Icons.flag_rounded,
-              t('Objectif', 'الهدف', 'Objective'),
-              t(
-                'Comprendre les notions de ce chapitre et savoir les réutiliser.',
-                'فهم مفاهيم هذا الفصل والقدرة على استعمالها.',
-                'Understand the chapter concepts and learn how to use them.',
-              ),
-            ),
-
-            _section(
-              Icons.menu_book_rounded,
-              t('Cours', 'الدرس', 'Lesson'),
-              t(
-                'Le contenu pédagogique détaillé sera intégré ici après '
-                'validation des références officielles.',
-                'سيُضاف المحتوى التعليمي المفصل هنا بعد التحقق '
-                'من المراجع الرسمية.',
-                'Detailed learning content will be added here after '
-                'official references are verified.',
-              ),
-            ),
-
-            _section(
-              Icons.lightbulb_rounded,
-              t('Exemple guidé', 'مثال تطبيقي', 'Guided example'),
-              t(
-                'Un exemple progressif adapté au niveau sera présenté '
-                'dans cette partie.',
-                'سيُعرض مثال تدريجي مناسب للمستوى في هذا القسم.',
-                'A step-by-step example adapted to this grade will '
-                'appear here.',
-              ),
-            ),
-
-            _section(
-              Icons.quiz_rounded,
-              t('Exercice', 'تمرين', 'Exercise'),
-              t(
-                'Des exercices avec correction expliquée seront ajoutés '
-                'à cette leçon.',
-                'ستُضاف تمارين مع تصحيح مشروح إلى هذا الدرس.',
-                'Exercises with explained solutions will be added '
-                'to this lesson.',
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            Card(
-              child: CheckboxListTile(
-                value: completed,
-                onChanged: (value) => _toggleProgress(value ?? false),
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(
-                  t(
-                    'Marquer cette leçon comme terminée',
-                    'وضع علامة إتمام الدرس',
-                    'Mark this lesson as completed',
+        body: lesson != null
+            ? Column(
+                children: [
+                  Expanded(
+                    child: NibrasLessonPreview(
+                      lesson: lesson,
+                      languageCode: widget.locale.languageCode,
+                    ),
                   ),
-                ),
-                subtitle: Text(
-                  t(
-                    'Progression enregistrée sur cet appareil',
-                    'يُحفظ التقدم على هذا الجهاز',
-                    'Progress saved on this device',
+                  Card(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: CheckboxListTile(
+                      value: completed,
+                      onChanged: (value) =>
+                          _toggleProgress(value ?? false),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: Text(
+                        t(
+                          'Marquer cette leçon comme terminée',
+                          'وضع علامة إتمام الدرس',
+                          'Mark this lesson as completed',
+                        ),
+                      ),
+                      subtitle: Text(
+                        t(
+                          'Progression enregistrée sur cet appareil',
+                          'يُحفظ التقدم على هذا الجهاز',
+                          'Progress saved on this device',
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
+              )
+            : ListView(
+                padding: const EdgeInsets.all(18),
+                children: [
+                  Text(
+                    widget.level,
+                    style: const TextStyle(
+                      color: Color(0xffb27a12),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    widget.subject,
+                    style: const TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.chapter,
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(height: 18),
+                  _section(
+                    Icons.flag_rounded,
+                    t('Objectif', 'الهدف', 'Objective'),
+                    t(
+                      'Comprendre les notions de ce chapitre et savoir les réutiliser.',
+                      'فهم مفاهيم هذا الفصل والقدرة على استعمالها.',
+                      'Understand the chapter concepts and learn how to use them.',
+                    ),
+                  ),
+                  _section(
+                    Icons.menu_book_rounded,
+                    t('Cours', 'الدرس', 'Lesson'),
+                    t(
+                      'Le contenu pédagogique détaillé sera intégré ici après validation des références officielles.',
+                      'سيُضاف المحتوى التعليمي المفصل هنا بعد التحقق من المراجع الرسمية.',
+                      'Detailed learning content will be added here after official references are verified.',
+                    ),
+                  ),
+                  _section(
+                    Icons.lightbulb_rounded,
+                    t('Exemple guidé', 'مثال تطبيقي', 'Guided example'),
+                    t(
+                      'Un exemple progressif adapté au niveau sera présenté dans cette partie.',
+                      'سيُعرض مثال تدريجي مناسب للمستوى في هذا القسم.',
+                      'A step-by-step example adapted to this grade will appear here.',
+                    ),
+                  ),
+                  _section(
+                    Icons.quiz_rounded,
+                    t('Exercice', 'تمرين', 'Exercise'),
+                    t(
+                      'Des exercices avec correction expliquée seront ajoutés à cette leçon.',
+                      'ستُضاف تمارين مع تصحيح مشروح إلى هذا الدرس.',
+                      'Exercises with explained solutions will be added to this lesson.',
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Card(
+                    child: CheckboxListTile(
+                      value: completed,
+                      onChanged: (value) =>
+                          _toggleProgress(value ?? false),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: Text(
+                        t(
+                          'Marquer cette leçon comme terminée',
+                          'وضع علامة إتمام الدرس',
+                          'Mark this lesson as completed',
+                        ),
+                      ),
+                      subtitle: Text(
+                        t(
+                          'Progression enregistrée sur cet appareil',
+                          'يُحفظ التقدم على هذا الجهاز',
+                          'Progress saved on this device',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
