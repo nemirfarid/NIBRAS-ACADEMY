@@ -42,7 +42,7 @@ def font(size, arabic=False):
     for p in paths:
         if Path(p).exists(): return ImageFont.truetype(p,size)
     return ImageFont.load_default()
-def scene(lang, idx, data):
+def scene(lang, lesson_id, idx, data):
     top,title,subtitle=data; ar=lang=="ar"
     im=Image.new("RGB",(W,H),BG); d=ImageDraw.Draw(im)
     for x in range(0,W,80): d.ellipse((x,45+(x%3)*28,x+5,50+(x%3)*28),fill=(90,145,220))
@@ -50,15 +50,20 @@ def scene(lang, idx, data):
     d.text((W//2,125),top,font=font(58,ar),fill=GOLD,anchor="mm",direction="rtl" if ar else None)
     d.text((W//2,260),title,font=font(58,ar),fill=WHITE,anchor="mm",direction="rtl" if ar else None)
     # Lesson-specific visual motifs
-    if "espace" in subtitle.lower() or "الموقع" in subtitle or "position" in subtitle.lower():
+    if "espace" in lesson_id:
         d.rectangle((470,420,810,455),fill=(190,130,75)); d.rectangle((500,455,525,540),fill=(190,130,75)); d.rectangle((755,455,780,540),fill=(190,130,75))
         d.ellipse((610,320,670,380),fill=(255,190,90),outline=GOLD,width=5)
     else:
-        n=[1,2,3,5][idx]
+        if "nombres-1-5" in lesson_id: n=[0,1,3,5][idx]
+        elif "nombres-6-9" in lesson_id: n=[0,6,8,9][idx]
+        elif "zero" in lesson_id: n=[0,0,1,0][idx]
+        else: n=[0,9,10,10][idx]
+        step=92 if n>5 else 140
         for j in range(n):
-            cx=W//2-(n-1)*70+j*140; cy=420
-            d.polygon([(cx,cy-62),(cx+46,cy),(cx,cy+62),(cx-46,cy)],fill=(65,205,245),outline=GOLD)
-            d.ellipse((cx-12,cy-32,cx+12,cy+32),fill=(220,250,255))
+            cx=W//2-(min(n,5)-1)*step//2+(j%5)*step
+            cy=390+(j//5)*105
+            d.polygon([(cx,cy-34),(cx+26,cy),(cx,cy+34),(cx-26,cy)],fill=(65,205,245),outline=GOLD)
+            d.ellipse((cx-8,cy-18,cx+8,cy+18),fill=(220,250,255))
     d.text((W//2,590),subtitle,font=font(29,ar),fill=(225,237,255),anchor="mm",direction="rtl" if ar else None)
     return im
 def run(cmd): subprocess.run(cmd,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
@@ -70,7 +75,7 @@ def main():
         work=OUT/f"work_{lesson_id}_{lang}"; work.mkdir(parents=True,exist_ok=True)
         frames=[]
         for i,data in enumerate(scenes):
-          p=work/f"scene_{i:02d}.png"; scene(lang,i,data).save(p); frames.append(p)
+          p=work/f"scene_{i:02d}.png"; scene(lang,lesson_id,i,data).save(p); frames.append(p)
         narration=" ".join(s[2] for s in scenes); wav=work/"narration.wav"
         run(["espeak-ng","-v",VOICE[lang],"-s","138","-w",str(wav),narration])
         concat=work/"frames.txt"
