@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt;
 import 'nibras_tutor_service.dart';
 
 /// Contenus pilotes originaux pour le parcours 1AP – Mathématiques.
@@ -52,6 +53,26 @@ class NibrasLessonContent {
   String question(String language) => _pick(language, questionFr, questionAr, questionEn);
   String correction(String language) => _pick(language, correctionFr, correctionAr, correctionEn);
   String remember(String language) => _pick(language, rememberFr, rememberAr, rememberEn);
+
+  String? get youtubeVideoId {
+    switch (id) {
+      case '1ap-math-nombres-1-5':
+        return 'Cpc_9JQo2IQ';
+      case '1ap-math-espace':
+        return 'uwlwDlbv81s';
+      default:
+        return null;
+    }
+  }
+
+  List<String> optionsFor(String language) {
+    if (id == '1ap-math-espace') {
+      if (language == 'ar') return const ['فوق', 'تحت', 'أمام'];
+      if (language == 'en') return const ['On', 'Under', 'In front'];
+      return const ['Sur', 'Sous', 'Devant'];
+    }
+    return options;
+  }
 }
 
 String _pick(String language, String fr, String ar, String en) {
@@ -213,6 +234,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   int? selected;
   bool checked = false;
   VideoPlayerController? _videoController;
+  yt.YoutubePlayerController? _youtubeController;
   bool _videoLoading = true;
   bool _videoFailed = false;
   bool _checkpointShown = false;
@@ -234,6 +256,18 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   @override
   void initState() {
     super.initState();
+    final youtubeId = widget.lesson.youtubeVideoId;
+    if (youtubeId != null) {
+      _youtubeController = yt.YoutubePlayerController.fromVideoId(
+        videoId: youtubeId,
+        autoPlay: false,
+        params: const yt.YoutubePlayerParams(
+          showFullscreenButton: true,
+          showControls: true,
+          strictRelatedVideos: true,
+        ),
+      );
+    }
     _initVideo();
   }
 
@@ -243,6 +277,13 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
     if (oldWidget.lesson.id != widget.lesson.id ||
         oldWidget.languageCode != widget.languageCode) {
       _videoController?.dispose();
+      _youtubeController?.close();
+      final youtubeId = widget.lesson.youtubeVideoId;
+      _youtubeController = youtubeId == null ? null : yt.YoutubePlayerController.fromVideoId(
+        videoId: youtubeId,
+        autoPlay: false,
+        params: const yt.YoutubePlayerParams(showFullscreenButton: true, showControls: true, strictRelatedVideos: true),
+      );
       _videoLoading = true;
       _videoFailed = false;
       _checkpointShown = false;
@@ -294,6 +335,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   @override
   void dispose() {
     _videoController?.dispose();
+    _youtubeController?.close();
     _tutorInput.dispose();
     _tutor.dispose();
     super.dispose();
@@ -341,7 +383,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
                   Text(lesson.question(lang)),
                   const SizedBox(height: 8),
                   ...List.generate(
-                    lesson.options.length,
+                    lesson.optionsFor(lang).length,
                     (index) => RadioListTile<int>(
                       value: index,
                       groupValue: selected,
@@ -349,7 +391,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
                         selected = value;
                         checked = false;
                       }),
-                      title: Text(lesson.options[index]),
+                      title: Text(lesson.optionsFor(lang)[index]),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -408,6 +450,28 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
         FilledButton.icon(onPressed: _checkpointShown && !_checkpointAnswered ? null : () async { if (controller.value.isPlaying) { await controller.pause(); } else { if (controller.value.position >= controller.value.duration) await controller.seekTo(Duration.zero); await controller.play(); } if (mounted) setState(() {}); }, icon: Icon(controller.value.isPlaying ? Icons.pause : Icons.play_arrow), label: Text(controller.value.isPlaying ? (language == 'ar' ? 'إيقاف مؤقت' : 'Pause') : (language == 'ar' ? 'تشغيل الفيديو' : language == 'en' ? 'Play video' : 'Lire la vidéo'))),
       ]),
       Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 14), child: Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
+      if (_youtubeController != null) ...[
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Text(
+            language == 'ar' ? 'درس إضافي من يوتيوب' : language == 'en' ? 'Additional lesson from YouTube' : 'Vidéo pédagogique complémentaire YouTube',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        AspectRatio(
+          aspectRatio: 16 / 9,
+          child: yt.YoutubePlayer(controller: _youtubeController!, aspectRatio: 16 / 9),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            language == 'ar' ? 'يتطلب اتصالاً بالإنترنت. أوقف الفيديو المدمج قبل تشغيل فيديو يوتيوب.' : language == 'en' ? 'Internet connection required. Pause the offline video before playing YouTube.' : 'Connexion Internet requise. Mets en pause la vidéo locale avant de lancer YouTube.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+      ],
     ]));
   }
 
@@ -426,11 +490,11 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
           Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
           const SizedBox(height: 8),
           Text(prompt),
-          ...List.generate(widget.lesson.options.length, (i) => RadioListTile<int>(
+          ...List.generate(widget.lesson.optionsFor(language).length, (i) => RadioListTile<int>(
             dense: true, contentPadding: EdgeInsets.zero,
             value: i, groupValue: _checkpointChoice,
             onChanged: _checkpointAnswered ? null : (v) => setState(() => _checkpointChoice = v),
-            title: Text(widget.lesson.options[i]),
+            title: Text(widget.lesson.optionsFor(language)[i]),
           )),
           if (_checkpointAnswered)
             Text(correct ? (isAr ? 'أحسنت! إجابة صحيحة.' : isEn ? 'Excellent! Correct answer.' : 'Bravo ! Bonne réponse.')
