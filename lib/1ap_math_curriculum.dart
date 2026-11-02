@@ -214,6 +214,10 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   VideoPlayerController? _videoController;
   bool _videoLoading = true;
   bool _videoFailed = false;
+  bool _checkpointShown = false;
+  bool _checkpointAnswered = false;
+  int? _checkpointChoice;
+  String _tutorMode = 'welcome';
 
   String get _lang {
     final code = widget.languageCode.toLowerCase();
@@ -247,6 +251,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
     _videoController = controller;
     try {
       await controller.initialize();
+      controller.addListener(_watchInteractiveCheckpoint);
       if (!mounted) return;
       setState(() => _videoLoading = false);
     } catch (_) {
@@ -256,6 +261,25 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
         _videoFailed = true;
       });
     }
+  }
+
+  void _watchInteractiveCheckpoint() {
+    final controller = _videoController;
+    if (!mounted || controller == null || !controller.value.isInitialized ||
+        _checkpointShown || controller.value.duration.inMilliseconds == 0) return;
+    final trigger = controller.value.duration.inMilliseconds * 0.55;
+    if (controller.value.position.inMilliseconds >= trigger) {
+      _checkpointShown = true;
+      controller.pause();
+      setState(() {});
+    }
+  }
+
+  Future<void> _resumeAfterCheckpoint() async {
+    final controller = _videoController;
+    if (controller == null || !_checkpointAnswered) return;
+    await controller.play();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -291,6 +315,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
           _section(labels.$2, lesson.course(lang)),
           _section(labels.$3, lesson.example(lang)),
           _videoCard(lang),
+          _professorPanel(lang),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -364,12 +389,90 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
       Padding(padding: const EdgeInsets.all(14), child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold))),
       AspectRatio(aspectRatio: 16 / 9, child: _videoLoading ? const Center(child: CircularProgressIndicator()) : _videoFailed || controller == null || !controller.value.isInitialized ? Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(language == 'ar' ? 'تعذر تحميل فيديو هذا الدرس.' : language == 'en' ? 'This lesson video could not be loaded.' : 'Impossible de charger la vidéo de cette leçon.', textAlign: TextAlign.center))) : VideoPlayer(controller)),
       if (!_videoLoading && !_videoFailed && controller != null && controller.value.isInitialized) VideoProgressIndicator(controller, allowScrubbing: true, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+      if (_checkpointShown) _checkpointCard(language),
       if (!_videoLoading && !_videoFailed && controller != null && controller.value.isInitialized) Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         IconButton(tooltip: language == 'ar' ? 'إعادة' : language == 'en' ? 'Restart' : 'Recommencer', onPressed: () async { await controller.seekTo(Duration.zero); await controller.play(); if (mounted) setState(() {}); }, icon: const Icon(Icons.replay)),
-        FilledButton.icon(onPressed: () async { if (controller.value.isPlaying) { await controller.pause(); } else { if (controller.value.position >= controller.value.duration) await controller.seekTo(Duration.zero); await controller.play(); } if (mounted) setState(() {}); }, icon: Icon(controller.value.isPlaying ? Icons.pause : Icons.play_arrow), label: Text(controller.value.isPlaying ? (language == 'ar' ? 'إيقاف مؤقت' : 'Pause') : (language == 'ar' ? 'تشغيل الفيديو' : language == 'en' ? 'Play video' : 'Lire la vidéo'))),
+        FilledButton.icon(onPressed: _checkpointShown && !_checkpointAnswered ? null : () async { if (controller.value.isPlaying) { await controller.pause(); } else { if (controller.value.position >= controller.value.duration) await controller.seekTo(Duration.zero); await controller.play(); } if (mounted) setState(() {}); }, icon: Icon(controller.value.isPlaying ? Icons.pause : Icons.play_arrow), label: Text(controller.value.isPlaying ? (language == 'ar' ? 'إيقاف مؤقت' : 'Pause') : (language == 'ar' ? 'تشغيل الفيديو' : language == 'en' ? 'Play video' : 'Lire la vidéo'))),
       ]),
       Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 14), child: Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
     ]));
+  }
+
+  Widget _checkpointCard(String language) {
+    final isAr = language == 'ar';
+    final isEn = language == 'en';
+    final title = isAr ? 'توقف ذكي: أجب قبل متابعة الفيديو' : isEn ? 'Learning checkpoint: answer to continue' : 'Pause pédagogique : réponds pour continuer';
+    final prompt = widget.lesson.question(language);
+    final correct = _checkpointChoice == widget.lesson.correctIndex;
+    return Card(
+      color: const Color(0xfffff5d8),
+      margin: const EdgeInsets.all(12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+          const SizedBox(height: 8),
+          Text(prompt),
+          ...List.generate(widget.lesson.options.length, (i) => RadioListTile<int>(
+            dense: true, contentPadding: EdgeInsets.zero,
+            value: i, groupValue: _checkpointChoice,
+            onChanged: _checkpointAnswered ? null : (v) => setState(() => _checkpointChoice = v),
+            title: Text(widget.lesson.options[i]),
+          )),
+          if (_checkpointAnswered)
+            Text(correct ? (isAr ? 'أحسنت! إجابة صحيحة.' : isEn ? 'Excellent! Correct answer.' : 'Bravo ! Bonne réponse.')
+              : widget.lesson.correction(language),
+              style: TextStyle(fontWeight: FontWeight.bold, color: correct ? Colors.green : Colors.deepOrange)),
+          const SizedBox(height: 8),
+          if (!_checkpointAnswered)
+            FilledButton(onPressed: _checkpointChoice == null ? null : () => setState(() => _checkpointAnswered = true),
+              child: Text(isAr ? 'تحقق من إجابتي' : isEn ? 'Check my answer' : 'Vérifier ma réponse'))
+          else if (correct)
+            FilledButton.icon(onPressed: _resumeAfterCheckpoint, icon: const Icon(Icons.play_arrow),
+              label: Text(isAr ? 'متابعة الفيديو' : isEn ? 'Continue video' : 'Reprendre la vidéo'))
+          else
+            OutlinedButton(onPressed: () => setState(() { _checkpointChoice = null; _checkpointAnswered = false; }),
+              child: Text(isAr ? 'حاول مرة أخرى' : isEn ? 'Try again' : 'Réessayer')),
+        ]),
+      ),
+    );
+  }
+
+  Widget _professorPanel(String language) {
+    final isAr = language == 'ar';
+    final isEn = language == 'en';
+    final heading = isAr ? 'الأستاذ نبراس' : isEn ? 'Professor Nibras' : 'Professeur Nibras';
+    final intro = isAr ? 'أنا هنا لمساعدتك. اختر نوع المساعدة.' : isEn ? 'I am here to help. Choose the help you need.' : 'Je suis là pour t’aider. Choisis le type d’aide dont tu as besoin.';
+    final responses = isAr
+      ? {'welcome': intro, 'hint': 'ابدأ بعدّ كل عنصر مرة واحدة، وأشر إليه بإصبعك.', 'explain': 'العدد الأخير الذي تنطقه بعد عد جميع العناصر مرة واحدة يمثل الكمية الكلية.', 'why': widget.lesson.correction(language)}
+      : isEn
+      ? {'welcome': intro, 'hint': 'Point to each object once. Do not skip an object or count it twice.', 'explain': 'Say the numbers in order. The last number you say is the total amount.', 'why': widget.lesson.correction(language)}
+      : {'welcome': intro, 'hint': 'Pointe chaque objet une seule fois. Ne saute aucun objet et ne le compte pas deux fois.', 'explain': 'Compte dans l’ordre. Le dernier nombre prononcé indique la quantité totale.', 'why': widget.lesson.correction(language)};
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [const Icon(Icons.school, color: Colors.indigo), const SizedBox(width: 8),
+            Expanded(child: Text(heading, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+            const Chip(label: Text('Hors ligne')),
+          ]),
+          const SizedBox(height: 6),
+          Text(responses[_tutorMode] ?? intro),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'hint'), icon: const Icon(Icons.lightbulb_outline),
+              label: Text(isAr ? 'تلميح' : isEn ? 'Hint' : 'Indice')),
+            OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'explain'), icon: const Icon(Icons.menu_book),
+              label: Text(isAr ? 'اشرح بطريقة أخرى' : isEn ? 'Explain another way' : 'Explique autrement')),
+            OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'why'), icon: const Icon(Icons.question_answer),
+              label: Text(isAr ? 'لماذا؟' : isEn ? 'Why?' : 'Pourquoi ?')),
+          ]),
+          const SizedBox(height: 4),
+          Text(isAr ? 'مساعدة تربوية مدمجة تعمل دون إنترنت.' : isEn ? 'Built-in guided learning help works offline.' : 'Aide pédagogique guidée intégrée, disponible hors connexion.',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+        ]),
+      ),
+    );
   }
 
   Widget _section(String title, String body) => Card(
