@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'nibras_tutor_service.dart';
 
 /// Contenus pilotes originaux pour le parcours 1AP – Mathématiques.
 /// À confronter au manuel ONPS de l'année scolaire avant publication
@@ -218,6 +219,10 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   bool _checkpointAnswered = false;
   int? _checkpointChoice;
   String _tutorMode = 'welcome';
+  final NibrasTutorService _tutor = NibrasTutorService();
+  final TextEditingController _tutorInput = TextEditingController();
+  final List<Map<String, String>> _tutorMessages = [];
+  bool _tutorBusy = false;
 
   String get _lang {
     final code = widget.languageCode.toLowerCase();
@@ -289,6 +294,8 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   @override
   void dispose() {
     _videoController?.dispose();
+    _tutorInput.dispose();
+    _tutor.dispose();
     super.dispose();
   }
 
@@ -442,41 +449,98 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
     );
   }
 
+  Future<void> _askProfessor(String language) async {
+    final question = _tutorInput.text.trim();
+    if (question.isEmpty || _tutorBusy) return;
+    _tutorInput.clear();
+    setState(() {
+      _tutorBusy = true;
+      _tutorMessages.add({'role': 'student', 'text': question});
+    });
+    final answer = await _tutor.ask(
+      question: question,
+      language: language,
+      lessonTitle: widget.lesson.title(language),
+      lessonContext: [
+        widget.lesson.objective(language),
+        widget.lesson.course(language),
+        widget.lesson.example(language),
+        widget.lesson.remember(language),
+      ].join('\\n'),
+    );
+    if (!mounted) return;
+    final offline = language == 'ar'
+        ? 'يمكنني مساعدتك دون إنترنت: عدّ العناصر واحداً واحداً، ثم قل العدد الأخير. اطلب تلميحاً أو شرحاً آخر من الأزرار أعلاه.'
+        : language == 'en'
+            ? 'I can still help offline: count each object once, then say the last number. Use the hint and alternative explanation buttons above.'
+            : 'Je peux continuer à t’aider hors ligne : compte chaque objet une seule fois, puis donne le dernier nombre. Utilise les boutons indice et explication ci-dessus.';
+    setState(() {
+      _tutorBusy = false;
+      _tutorMessages.add({'role': 'teacher', 'text': answer ?? offline});
+    });
+  }
+
   Widget _professorPanel(String language) {
     final isAr = language == 'ar';
     final isEn = language == 'en';
     final heading = isAr ? 'الأستاذ نبراس' : isEn ? 'Professor Nibras' : 'Professeur Nibras';
-    final intro = isAr ? 'أنا هنا لمساعدتك. اختر نوع المساعدة.' : isEn ? 'I am here to help. Choose the help you need.' : 'Je suis là pour t’aider. Choisis le type d’aide dont tu as besoin.';
+    final intro = isAr ? 'أنا هنا لمساعدتك. اكتب سؤالك أو اختر نوع المساعدة.' : isEn ? 'I am here to help. Ask a question or choose a kind of help.' : 'Je suis là pour t’aider. Pose ta question ou choisis une aide.';
     final responses = isAr
-      ? {'welcome': intro, 'hint': 'ابدأ بعدّ كل عنصر مرة واحدة، وأشر إليه بإصبعك.', 'explain': 'العدد الأخير الذي تنطقه بعد عد جميع العناصر مرة واحدة يمثل الكمية الكلية.', 'why': widget.lesson.correction(language)}
+      ? {'hint': 'ابدأ بعدّ كل عنصر مرة واحدة، وأشر إليه بإصبعك.', 'explain': 'العدد الأخير الذي تنطقه بعد عد جميع العناصر مرة واحدة يمثل الكمية الكلية.', 'why': widget.lesson.correction(language)}
       : isEn
-      ? {'welcome': intro, 'hint': 'Point to each object once. Do not skip an object or count it twice.', 'explain': 'Say the numbers in order. The last number you say is the total amount.', 'why': widget.lesson.correction(language)}
-      : {'welcome': intro, 'hint': 'Pointe chaque objet une seule fois. Ne saute aucun objet et ne le compte pas deux fois.', 'explain': 'Compte dans l’ordre. Le dernier nombre prononcé indique la quantité totale.', 'why': widget.lesson.correction(language)};
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [const Icon(Icons.school, color: Colors.indigo), const SizedBox(width: 8),
-            Expanded(child: Text(heading, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-            const Chip(label: Text('Hors ligne')),
-          ]),
-          const SizedBox(height: 6),
-          Text(responses[_tutorMode] ?? intro),
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'hint'), icon: const Icon(Icons.lightbulb_outline),
-              label: Text(isAr ? 'تلميح' : isEn ? 'Hint' : 'Indice')),
-            OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'explain'), icon: const Icon(Icons.menu_book),
-              label: Text(isAr ? 'اشرح بطريقة أخرى' : isEn ? 'Explain another way' : 'Explique autrement')),
-            OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'why'), icon: const Icon(Icons.question_answer),
-              label: Text(isAr ? 'لماذا؟' : isEn ? 'Why?' : 'Pourquoi ?')),
-          ]),
-          const SizedBox(height: 4),
-          Text(isAr ? 'مساعدة تربوية مدمجة تعمل دون إنترنت.' : isEn ? 'Built-in guided learning help works offline.' : 'Aide pédagogique guidée intégrée, disponible hors connexion.',
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+      ? {'hint': 'Point to each object once. Do not skip an object or count it twice.', 'explain': 'Say the numbers in order. The last number you say is the total amount.', 'why': widget.lesson.correction(language)}
+      : {'hint': 'Pointe chaque objet une seule fois. Ne saute aucun objet et ne le compte pas deux fois.', 'explain': 'Compte dans l’ordre. Le dernier nombre prononcé indique la quantité totale.', 'why': widget.lesson.correction(language)};
+    final prompt = isAr ? 'اكتب سؤالك هنا...' : isEn ? 'Ask your question...' : 'Écris ta question ici...';
+    return Card(child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [const Icon(Icons.school, color: Colors.indigo), const SizedBox(width: 8),
+          Expanded(child: Text(heading, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+          const Chip(label: Text('AI + Offline')),
         ]),
-      ),
-    );
+        const SizedBox(height: 6),
+        Text(intro),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'hint'), icon: const Icon(Icons.lightbulb_outline),
+            label: Text(isAr ? 'تلميح' : isEn ? 'Hint' : 'Indice')),
+          OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'explain'), icon: const Icon(Icons.menu_book),
+            label: Text(isAr ? 'اشرح بطريقة أخرى' : isEn ? 'Explain another way' : 'Explique autrement')),
+          OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'why'), icon: const Icon(Icons.question_answer),
+            label: Text(isAr ? 'لماذا؟' : isEn ? 'Why?' : 'Pourquoi ?')),
+        ]),
+        if (_tutorMode != 'welcome') ...[
+          const SizedBox(height: 8),
+          Container(width: double.infinity, padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.indigo.withValues(alpha: .06), borderRadius: BorderRadius.circular(12)),
+            child: Text(responses[_tutorMode] ?? intro)),
+        ],
+        if (_tutorMessages.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ..._tutorMessages.take(8).map((m) => Align(
+            alignment: m['role'] == 'student' ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
+            child: Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(10),
+              constraints: const BoxConstraints(maxWidth: 310),
+              decoration: BoxDecoration(color: m['role'] == 'student' ? Colors.blue.withValues(alpha: .10) : Colors.green.withValues(alpha: .10), borderRadius: BorderRadius.circular(12)),
+              child: Text(m['text'] ?? ''),
+            ),
+          )),
+        ],
+        const SizedBox(height: 10),
+        TextField(controller: _tutorInput, minLines: 1, maxLines: 3,
+          textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
+          decoration: InputDecoration(hintText: prompt, border: const OutlineInputBorder(),
+            suffixIcon: IconButton(onPressed: _tutorBusy ? null : () => _askProfessor(language),
+              icon: _tutorBusy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.send))),
+          onSubmitted: (_) => _askProfessor(language),
+        ),
+        const SizedBox(height: 6),
+        Text(isAr ? 'يعمل الإرشاد الأساسي دون إنترنت. المحادثة الذكية تتطلب اتصالاً بخادم آمن.' :
+          isEn ? 'Guided help works offline. Generative conversation needs a secure server connection.' :
+          'L’aide guidée fonctionne hors ligne. La conversation IA nécessite un serveur sécurisé.',
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+      ]),
+    ));
   }
 
   Widget _section(String title, String body) => Card(
