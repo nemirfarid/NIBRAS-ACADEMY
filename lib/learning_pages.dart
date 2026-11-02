@@ -1,9 +1,9 @@
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '1ap_math_curriculum.dart';
 import '1ap_math_assessment.dart';
+import 'lesson_pdf_service.dart';
 
 bool _isAp1Math(String level, String subject) {
   final l = level.toLowerCase().replaceAll(' ', '');
@@ -200,6 +200,7 @@ class LessonPage extends StatefulWidget {
 
 class _LessonPageState extends State<LessonPage> {
   bool completed = false;
+  bool printingPdf = false;
 
   String get legacyProgressKey =>
       'lesson_done_${widget.level}_${widget.subject}_${widget.chapter}';
@@ -280,6 +281,43 @@ class _LessonPageState extends State<LessonPage> {
     });
   }
 
+  Future<void> _printLessonPdf(NibrasLessonContent lesson) async {
+    final language = widget.locale.languageCode.toLowerCase();
+
+    // L'arabe est volontairement bloqué jusqu'à l'intégration
+    // d'une police arabe et de la gestion correcte du RTL dans le PDF.
+    if (language.startsWith('ar')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'نسخة PDF باللغة العربية قيد التحضير. يمكنك استعمال الفرنسية أو الإنجليزية حالياً.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (printingPdf) return;
+
+    setState(() {
+      printingPdf = true;
+    });
+
+    try {
+      await NibrasLessonPdfService.printLesson(
+        context: context,
+        lesson: lesson,
+        languageCode: language.startsWith('en') ? 'en' : 'fr',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          printingPdf = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final lesson = pilotLesson;
@@ -301,6 +339,51 @@ class _LessonPageState extends State<LessonPage> {
                       languageCode: widget.locale.languageCode,
                     ),
                   ),
+
+                  // Exportation de la fiche de révision PDF.
+                  Card(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: ListTile(
+                      leading: const Icon(
+                        Icons.picture_as_pdf_rounded,
+                        color: Color(0xff0756c8),
+                        size: 30,
+                      ),
+                      title: Text(
+                        t(
+                          'Imprimer la fiche PDF',
+                          'طباعة ورقة الدرس PDF',
+                          'Print lesson PDF',
+                        ),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        widget.locale.languageCode == 'ar'
+                            ? 'النسخة العربية قيد التحضير'
+                            : t(
+                                'Fiche A4 • Cours • Exemple • À retenir',
+                                'ورقة A4 • الدرس • مثال • للحفظ',
+                                'A4 sheet • Lesson • Example • Key points',
+                              ),
+                      ),
+                      trailing: printingPdf
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.print_rounded),
+                      onTap: printingPdf
+                          ? null
+                          : () => _printLessonPdf(lesson),
+                    ),
+                  ),
+
+                  // Progression existante : conservée sans réinitialisation.
                   Card(
                     margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     child: CheckboxListTile(
