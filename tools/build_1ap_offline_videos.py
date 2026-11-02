@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Generate 15 offline 1AP maths lesson videos (5 topics x 3 languages)."""
 from pathlib import Path
-import subprocess, shutil
+import subprocess, shutil, asyncio
+import edge_tts
 from PIL import Image, ImageDraw, ImageFont
 
 OUT = Path("assets/videos")
 OUT.mkdir(parents=True, exist_ok=True)
 W, H = 1280, 720
-VOICE = {"fr":"fr", "ar":"ar", "en":"en"}
+VOICE = {"fr":"fr-FR-DeniseNeural", "ar":"ar-DZ-AminaNeural", "en":"en-US-JennyNeural"}
 # Each lesson has its own language-specific scenes and narration.
 LESSONS = {
  "1ap-math-nombres-1-5": {
@@ -68,7 +69,7 @@ def scene(lang, lesson_id, idx, data):
     return im
 def run(cmd): subprocess.run(cmd,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
 def main():
-    if not shutil.which("ffmpeg") or not shutil.which("espeak-ng"): raise SystemExit("ffmpeg and espeak-ng are required")
+    if not shutil.which("ffmpeg"): raise SystemExit("ffmpeg is required")
     count=0
     for lesson_id, translations in LESSONS.items():
       for lang, scenes in translations.items():
@@ -76,12 +77,17 @@ def main():
         frames=[]
         for i,data in enumerate(scenes):
           p=work/f"scene_{i:02d}.png"; scene(lang,lesson_id,i,data).save(p); frames.append(p)
-        narration=" ".join(s[2] for s in scenes); wav=work/"narration.wav"
-        run(["espeak-ng","-v",VOICE[lang],"-s","138","-w",str(wav),narration])
+        narration=" ".join(s[2] for s in scenes); audio=work/"narration.mp3"
+        # Microsoft Edge neural TTS: natural prosody, language-specific pronunciation.
+        # Audio is generated during CI and embedded in the MP4, so playback is offline.
+        async def make_voice():
+          communicator = edge_tts.Communicate(narration, VOICE[lang], rate="+0%", volume="+0%", pitch="+0Hz")
+          await communicator.save(str(audio))
+        asyncio.run(make_voice())
         concat=work/"frames.txt"
         concat.write_text("".join(f"file '{p.resolve()}'\nduration 6\n" for p in frames)+f"file '{frames[-1].resolve()}'\n",encoding="utf-8")
         out=OUT/f"{lesson_id}_{lang}.mp4"
-        run(["ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),"-i",str(wav),"-vf","fps=30,format=yuv420p","-c:v","libx264","-preset","ultrafast","-crf","25","-c:a","aac","-b:a","96k","-af","apad","-t","24","-movflags","+faststart",str(out)])
+        run(["ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),"-i",str(audio),"-vf","fps=30,format=yuv420p","-c:v","libx264","-preset","ultrafast","-crf","25","-c:a","aac","-b:a","96k","-af","apad","-t","24","-movflags","+faststart",str(out)])
         shutil.rmtree(work); count+=1; print(f"Generated {out}")
     print(f"Generated {count} localized offline videos")
 if __name__=="__main__": main()
