@@ -90,7 +90,7 @@ def main():
         out=OUT/f"1ap_numbers_{lang}.mp4"
         run(["ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),"-i",str(wav),
              "-vf","fps=30,format=yuv420p","-c:v","libx264","-preset","ultrafast","-crf","25",
-             "-c:a","aac","-b:a","96k","-shortest","-movflags","+faststart",str(out)])
+             "-c:a","aac","-b:a","96k","-af","apad","-t","25","-movflags","+faststart",str(out)])
         shutil.rmtree(work)
         print(f"Generated {out}")
 if __name__ == "__main__":
