@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 import '1ap_math_curriculum.dart';
 import 'lesson_pdf_service.dart';
 
@@ -17,6 +17,9 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
   int count = 0, stars = 0, qIndex = 0, score = 0, best = 0;
   int? selected, videoChoice;
   bool videoChecked = false;
+  VideoPlayerController? _videoController;
+  bool videoLoading = true;
+  bool videoFailed = false;
   bool answered = false, finished = false, completed = false, printing = false;
   final questions = const [
     ['Combien de soleils ? ☀️ ☀️ ☀️', 'كم شمساً؟ ☀️ ☀️ ☀️', 'How many suns? ☀️ ☀️ ☀️', ['2','3','4'], 1],
@@ -32,10 +35,12 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
   void initState() {
     super.initState();
     _load();
+    _initializeLessonVideo();
   }
 
   @override
   void dispose() {
+    _videoController?.dispose();
     super.dispose();
   }
   Future<void> _load() async {
@@ -48,33 +53,40 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
     await p.setBool(progressKey, true);
     if (mounted) setState(() => completed = true);
   }
-  Future<void> _video(String url) async {
-    final uri = Uri.parse(url);
-    var opened = false;
+  Future<void> _initializeLessonVideo() async {
+    final controller = VideoPlayerController.asset('assets/videos/1ap_numbers_$lang.mp4');
+    _videoController = controller;
     try {
-      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!opened) {
-        opened = await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
+      await controller.initialize();
+      await controller.setLooping(false);
+      if (!mounted) return;
+      setState(() { videoLoading = false; videoFailed = false; });
     } catch (_) {
-      try {
-        opened = await launchUrl(uri, mode: LaunchMode.platformDefault);
-      } catch (_) {
-        opened = false;
-      }
-    }
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(t(
-            'Impossible d’ouvrir YouTube. Vérifie ta connexion Internet.',
-            'تعذر فتح يوتيوب. تحقق من اتصال الإنترنت.',
-            'Could not open YouTube. Check your internet connection.',
-          )),
-        ),
-      );
+      if (!mounted) return;
+      setState(() { videoLoading = false; videoFailed = true; });
     }
   }
+
+  Future<void> _toggleVideo() async {
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized) return;
+    if (controller.value.isPlaying) {
+      await controller.pause();
+    } else {
+      if (controller.value.position >= controller.value.duration) {
+        await controller.seekTo(Duration.zero);
+      }
+      await controller.play();
+    }
+    if (mounted) setState(() {});
+  }
+
+  String get _videoTitle => t(
+    'La vallée des cinq cristaux • Français',
+    'وادي البلورات الخمس • العربية',
+    'The Valley of Five Crystals • English',
+  );
+
   Future<void> _print() async {
     if (lang == 'ar') {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -139,12 +151,66 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
         _heading(t('3. Découverte des nombres', '3. اكتشاف الأعداد', '3. Discover the numbers')),
         ..._numberCards(),
         _card([Text(t('À RETENIR PAR CŒUR', 'للحفظ', 'REMEMBER BY HEART'), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xff9b6500))), Text(t('1 • 2 • 3 • 4 • 5. Compter, c’est dire combien il y a d’objets. Je pointe chaque objet une seule fois. Le dernier nombre prononcé donne la quantité totale.', '1 • 2 • 3 • 4 • 5. العد هو معرفة عدد العناصر. أشير إلى كل عنصر مرة واحدة. العدد الأخير يمثل الكمية كلها.', '1 • 2 • 3 • 4 • 5. Counting tells how many objects there are. Point to each object once. The last number gives the total quantity.'), style: const TextStyle(height: 1.5))], color: const Color(0xfffff5d8)),
-        _heading(t('4. Vidéos par langue', '4. فيديوهات حسب اللغة', '4. Videos by language')),
-        Text(t('Choisis une vidéo dans ta langue. Elle s’ouvre dans YouTube ou dans le navigateur du téléphone, sans lecteur intégré fragile.', 'اختر فيديو بلغتك. سيفتح في تطبيق يوتيوب أو متصفح الهاتف لتفادي مشاكل المشغل الداخلي.', 'Choose a video in your language. It opens in YouTube or your phone browser instead of an unreliable embedded player.'), style: const TextStyle(height: 1.4)),
-        const SizedBox(height: 8),
-        _videoTile('Français • Apprendre à compter de 1 à 5', t('Comptines et démonstrations pour apprendre à compter.', 'فيديوهات تعليمية باللغة الفرنسية.', 'French learning videos.'), 'https://www.youtube.com/results?search_query=apprendre+compter+de+1+a+5+maternelle+francais'),
-        _videoTile('العربية • تعلم الأعداد من 1 إلى 5', t('فيديوهات عربية لشرح الأعداد للأطفال.', 'شرح الأعداد من 1 إلى 5 باللغة العربية.', 'Arabic learning videos.'), 'https://www.youtube.com/results?search_query=تعلم+الأرقام+من+1+إلى+5+للأطفال'),
-        _videoTile('English • Learn numbers 1 to 5', t('Vidéos éducatives en anglais.', 'فيديوهات تعليمية باللغة الإنجليزية.', 'Songs and lessons for counting from 1 to 5.'), 'https://www.youtube.com/results?search_query=learn+numbers+1+to+5+for+kids+English'),
+        _heading(t('4. Vidéo du cours • langue sélectionnée', '4. فيديو الدرس • باللغة المختارة', '4. Lesson video • selected language')),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Container(
+              color: const Color(0xff071d50),
+              padding: const EdgeInsets.all(14),
+              child: Text(_videoTitle, textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: videoLoading
+                ? const Center(child: CircularProgressIndicator())
+                : videoFailed || !(_videoController?.value.isInitialized ?? false)
+                  ? Center(child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Text(t(
+                        'La vidéo locale n’a pas pu être chargée. Réinstalle la dernière version de l’application.',
+                        'تعذر تحميل الفيديو المدمج. أعد تثبيت أحدث إصدار من التطبيق.',
+                        'The bundled lesson video could not be loaded. Reinstall the latest app version.',
+                      ), textAlign: TextAlign.center),
+                    ))
+                  : VideoPlayer(_videoController!),
+            ),
+            if (!videoLoading && !videoFailed && (_videoController?.value.isInitialized ?? false)) ...[
+              VideoProgressIndicator(_videoController!, allowScrubbing: true,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                IconButton(
+                  tooltip: t('Recommencer', 'إعادة', 'Restart'),
+                  onPressed: () async { await _videoController!.seekTo(Duration.zero); if (mounted) setState(() {}); },
+                  icon: const Icon(Icons.replay),
+                ),
+                FilledButton.icon(
+                  onPressed: _toggleVideo,
+                  icon: Icon(_videoController!.value.isPlaying ? Icons.pause : Icons.play_arrow),
+                  label: Text(_videoController!.value.isPlaying
+                    ? t('Pause', 'إيقاف مؤقت', 'Pause')
+                    : t('Lire la vidéo', 'تشغيل الفيديو', 'Play video')),
+                ),
+                IconButton(
+                  tooltip: t('Plein écran', 'ملء الشاشة', 'Fullscreen'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => _LessonVideoFullscreen(controller: _videoController!),
+                  )),
+                  icon: const Icon(Icons.fullscreen),
+                ),
+              ]),
+            ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Text(t(
+                'Vidéo intégrée à l’application : lecture sans YouTube et sans connexion après installation.',
+                'فيديو مدمج داخل التطبيق: يعمل دون يوتيوب ودون إنترنت بعد التثبيت.',
+                'Video bundled inside the app: no YouTube and no internet required after installation.',
+              ), textAlign: TextAlign.center, style: const TextStyle(fontSize: 12)),
+            ),
+          ]),
+        ),
         _heading(t('5. Défi : trois cristaux', '5. تحدي: ثلاث بلورات', '5. Challenge: three crystals')),
         _card([Text(t('Sélectionne exactement 3 cristaux.', 'اختر 3 بلورات بالضبط.', 'Select exactly 3 crystals.')), Wrap(spacing: 8, children: List<Widget>.generate(5, (index) { final n = index + 1; return ChoiceChip(label: Text(n.toString()), selected: count == n, onSelected: (_) { setState(() { count = n; }); }); })), Text(count == 3 ? t('Mission réussie !', 'نجحت المهمة!', 'Challenge complete!') : t('Observe et essaie encore.', 'لاحظ وحاول مرة أخرى.', 'Look carefully and try again.'))]),
         _heading(t('6. Quiz de maîtrise', '6. اختبار الإتقان', '6. Mastery quiz')),
@@ -166,7 +232,6 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
     const words = ['UN', 'DEUX', 'TROIS', 'QUATRE', 'CINQ'];
     return List.generate(5, (i) => Card(child: ListTile(leading: CircleAvatar(backgroundColor: const Color(0xffffedbd), child: Text((i + 1).toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20))), title: Text(words[i], style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(lang == 'ar' ? ar[i] : lang == 'en' ? en[i] : fr[i]), trailing: IconButton(onPressed: () => setState(() => count = i + 1), icon: const Icon(Icons.touch_app)))));
   }
-  Widget _videoTile(String title, String subtitle, String url) => Card(child: ListTile(leading: const Icon(Icons.play_circle_fill, size: 34, color: Colors.red), title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(subtitle), trailing: const Icon(Icons.open_in_new), onTap: () => _video(url)));
   Widget _quiz() {
     if (finished) return _card([const Icon(Icons.workspace_premium, size: 52, color: Colors.amber), Text(t('Résultat : $score / 5 • Meilleur : $best / 5', 'النتيجة: $score / 5 • الأفضل: $best / 5', 'Score: $score / 5 • Best: $best / 5'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)), FilledButton(onPressed: _restart, child: Text(t('Rejouer', 'إعادة الاختبار', 'Play again')))]);
     final q = questions[qIndex];
@@ -174,4 +239,21 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
     final options = q[3] as List<String>;
     return _card([Text('Question ' + (qIndex + 1).toString() + ' / 5', style: const TextStyle(fontWeight: FontWeight.bold)), LinearProgressIndicator(value: (qIndex + 1) / questions.length), const SizedBox(height: 10), Text(prompt, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), ...List.generate(options.length, (i) => RadioListTile<int>(value: i, groupValue: selected, onChanged: answered ? null : (v) => setState(() => selected = v), title: Text(options[i]), contentPadding: EdgeInsets.zero)), if (answered) Text(selected == q[4] ? t('Bravo ! Bonne réponse.', 'أحسنت! إجابة صحيحة.', 'Well done! Correct.') : t('Recompte les objets et réessaie.', 'أعد عد العناصر وحاول مجدداً.', 'Count the objects again and retry.')), FilledButton(onPressed: selected == null ? null : answered ? _next : _check, child: Text(answered ? t('Suivant', 'التالي', 'Next') : t('Vérifier', 'تحقق', 'Check')))]);
   }
+}
+
+class _LessonVideoFullscreen extends StatelessWidget {
+  const _LessonVideoFullscreen({required this.controller});
+  final VideoPlayerController controller;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Colors.black,
+    appBar: AppBar(backgroundColor: Colors.black, title: const Text('NIBRAS ACADEMY')),
+    body: Center(
+      child: AspectRatio(
+        aspectRatio: controller.value.aspectRatio > 0 ? controller.value.aspectRatio : 16 / 9,
+        child: VideoPlayer(controller),
+      ),
+    ),
+  );
 }
