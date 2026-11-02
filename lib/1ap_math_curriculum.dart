@@ -240,6 +240,10 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
       _videoController?.dispose();
       _videoLoading = true;
       _videoFailed = false;
+      _checkpointShown = false;
+      _checkpointAnswered = false;
+      _checkpointChoice = null;
+      _tutorMode = 'welcome';
       _initVideo();
     }
   }
