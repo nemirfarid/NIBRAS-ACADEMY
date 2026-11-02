@@ -48,11 +48,11 @@ jobs:
       - name: Install offline video build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak-ng fonts-noto-core
+          sudo apt-get install -y ffmpeg fonts-noto-core
           python3 -m venv .venv-video
-          .venv-video/bin/pip install pillow
+          .venv-video/bin/pip install pillow edge-tts
 
-      - name: Generate offline videos in French, Arabic and English
+      - name: Generate offline videos with natural neural voices (FR, Arabic DZ, EN)
         run: .venv-video/bin/python tools/build_1ap_offline_videos.py
 
       - name: Install dependencies
