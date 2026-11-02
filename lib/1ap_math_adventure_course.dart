@@ -110,6 +110,7 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
           const SizedBox(height: 12),
           LinearProgressIndicator(value: completed ? 1 : finished ? .9 : .3, color: const Color(0xffffd66b)),
         ]),
+        ),
         _heading(t('1. Objectifs de la mission', '1. أهداف المهمة', '1. Mission goals')),
         _card([_line(Icons.flag, t('Réciter les nombres de 1 à 5.', 'ترتيب الأعداد من 1 إلى 5.', 'Say the numbers from 1 to 5.')), _line(Icons.visibility, t('Associer un chiffre à une quantité.', 'ربط الرقم بالكمية.', 'Match a digit to a quantity.')), _line(Icons.touch_app, t('Compter chaque objet une seule fois.', 'عد كل عنصر مرة واحدة فقط.', 'Count each object once.'))]),
         _heading(t('2. Animation interactive : le coffre', '2. نشاط تفاعلي: الصندوق', '2. Interactive animation: the chest')),
