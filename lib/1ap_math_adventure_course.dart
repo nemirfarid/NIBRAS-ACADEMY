@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '1ap_math_curriculum.dart';
 import 'lesson_pdf_service.dart';
 
@@ -18,7 +17,6 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
   int count = 0, stars = 0, qIndex = 0, score = 0, best = 0;
   int? selected, videoChoice;
   bool videoChecked = false;
-  late final YoutubePlayerController youtubeController;
   bool answered = false, finished = false, completed = false, printing = false;
   final questions = const [
     ['Combien de soleils ? ☀️ ☀️ ☀️', 'كم شمساً؟ ☀️ ☀️ ☀️', 'How many suns? ☀️ ☀️ ☀️', ['2','3','4'], 1],
@@ -33,24 +31,11 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
   @override
   void initState() {
     super.initState();
-    youtubeController = YoutubePlayerController.fromVideoId(
-      videoId: 'TyKFiA86YrY',
-      autoPlay: false,
-      params: const YoutubePlayerParams(
-        showControls: true,
-        showFullscreenButton: true,
-        enableCaption: true,
-        captionLanguage: 'ar',
-        interfaceLanguage: 'ar',
-        privacyEnhancedMode: true,
-      ),
-    );
     _load();
   }
 
   @override
   void dispose() {
-    youtubeController.close();
     super.dispose();
   }
   Future<void> _load() async {
@@ -131,9 +116,12 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
         _heading(t('3. Découverte des nombres', '3. اكتشاف الأعداد', '3. Discover the numbers')),
         ..._numberCards(),
         _card([Text(t('À RETENIR PAR CŒUR', 'للحفظ', 'REMEMBER BY HEART'), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xff9b6500))), Text(t('1 • 2 • 3 • 4 • 5. Compter, c’est dire combien il y a d’objets. Je pointe chaque objet une seule fois. Le dernier nombre prononcé donne la quantité totale.', '1 • 2 • 3 • 4 • 5. العد هو معرفة عدد العناصر. أشير إلى كل عنصر مرة واحدة. العدد الأخير يمثل الكمية كلها.', '1 • 2 • 3 • 4 • 5. Counting tells how many objects there are. Point to each object once. The last number gives the total quantity.'), style: const TextStyle(height: 1.5))], color: const Color(0xfffff5d8)),
-        _heading(t('4. Vidéos YouTube', '4. فيديوهات يوتيوب', '4. YouTube videos')),
-        _videoTile('Compter de 1 à 5 • Français', t('Recherche ciblée de vidéos éducatives en français.', 'بحث عن فيديوهات تعليمية بالفرنسية.', 'Search French educational videos.'), 'https://www.youtube.com/results?search_query=apprendre+compter+de+1+a+5+enfants'),
-        _embeddedVideo(),
+        _heading(t('4. Vidéos par langue', '4. فيديوهات حسب اللغة', '4. Videos by language')),
+        Text(t('Choisis une vidéo dans ta langue. Elle s’ouvre dans YouTube ou dans le navigateur du téléphone, sans lecteur intégré fragile.', 'اختر فيديو بلغتك. سيفتح في تطبيق يوتيوب أو متصفح الهاتف لتفادي مشاكل المشغل الداخلي.', 'Choose a video in your language. It opens in YouTube or your phone browser instead of an unreliable embedded player.'), style: const TextStyle(height: 1.4)),
+        const SizedBox(height: 8),
+        _videoTile('Français • Apprendre à compter de 1 à 5', t('Comptines et démonstrations pour apprendre à compter.', 'فيديوهات تعليمية باللغة الفرنسية.', 'French learning videos.'), 'https://www.youtube.com/results?search_query=apprendre+compter+de+1+a+5+maternelle+francais'),
+        _videoTile('العربية • تعلم الأعداد من 1 إلى 5', t('فيديوهات عربية لشرح الأعداد للأطفال.', 'شرح الأعداد من 1 إلى 5 باللغة العربية.', 'Arabic learning videos.'), 'https://www.youtube.com/results?search_query=تعلم+الأرقام+من+1+إلى+5+للأطفال'),
+        _videoTile('English • Learn numbers 1 to 5', t('Vidéos éducatives en anglais.', 'فيديوهات تعليمية باللغة الإنجليزية.', 'Songs and lessons for counting from 1 to 5.'), 'https://www.youtube.com/results?search_query=learn+numbers+1+to+5+for+kids+English'),
         _heading(t('5. Défi : trois cristaux', '5. تحدي: ثلاث بلورات', '5. Challenge: three crystals')),
         _card([Text(t('Sélectionne exactement 3 cristaux.', 'اختر 3 بلورات بالضبط.', 'Select exactly 3 crystals.')), Wrap(spacing: 8, children: List<Widget>.generate(5, (index) { final n = index + 1; return ChoiceChip(label: Text(n.toString()), selected: count == n, onSelected: (_) { setState(() { count = n; }); }); })), Text(count == 3 ? t('Mission réussie !', 'نجحت المهمة!', 'Challenge complete!') : t('Observe et essaie encore.', 'لاحظ وحاول مرة أخرى.', 'Look carefully and try again.'))]),
         _heading(t('6. Quiz de maîtrise', '6. اختبار الإتقان', '6. Mastery quiz')),
@@ -155,25 +143,6 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
     const words = ['UN', 'DEUX', 'TROIS', 'QUATRE', 'CINQ'];
     return List.generate(5, (i) => Card(child: ListTile(leading: CircleAvatar(backgroundColor: const Color(0xffffedbd), child: Text((i + 1).toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20))), title: Text(words[i], style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(lang == 'ar' ? ar[i] : lang == 'en' ? en[i] : fr[i]), trailing: IconButton(onPressed: () => setState(() => count = i + 1), icon: const Icon(Icons.touch_app)))));
   }
-  Widget _embeddedVideo() => Card(
-    clipBehavior: Clip.antiAlias,
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('تعلم الأرقام من ١ إلى ٥ • Youpi Smart World', style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        YoutubePlayer(controller: youtubeController, aspectRatio: 16 / 9),
-        const SizedBox(height: 10),
-        Text(t('Vidéo YouTube intégrée. Après le visionnage, réponds au mini-défi.', 'فيديو يوتيوب داخل التطبيق. بعد المشاهدة أجب عن التحدي.', 'Embedded YouTube video. After watching, answer the checkpoint.')),
-        const SizedBox(height: 8),
-        Text(t('Quel nombre vient juste après 4 ?', 'ما العدد الذي يأتي مباشرة بعد 4؟', 'Which number comes immediately after 4?'), style: const TextStyle(fontWeight: FontWeight.bold)),
-        Wrap(spacing: 8, children: [3, 5, 6].map((n) { return ChoiceChip(label: Text(n.toString()), selected: videoChoice == n, onSelected: (_) { setState(() { videoChoice = n; videoChecked = false; }); }); }).toList()),
-        FilledButton(onPressed: videoChoice == null ? null : () => setState(() => videoChecked = true), child: Text(t('Vérifier', 'تحقق', 'Check'))),
-        if (videoChecked) Text(videoChoice == 5 ? t('Bravo ! 5 vient après 4.', 'أحسنت! يأتي 5 بعد 4.', 'Well done! 5 comes after 4.') : t('Réessaie : récite 1, 2, 3, 4, 5.', 'حاول مجدداً: 1، 2، 3، 4، 5.', 'Try again: say 1, 2, 3, 4, 5.'), style: const TextStyle(fontWeight: FontWeight.bold)),
-      ]),
-    ),
-  );
-
   Widget _videoTile(String title, String subtitle, String url) => Card(child: ListTile(leading: const Icon(Icons.play_circle_fill, size: 34, color: Colors.red), title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(subtitle), trailing: const Icon(Icons.open_in_new), onTap: () => _video(url)));
   Widget _quiz() {
     if (finished) return _card([const Icon(Icons.workspace_premium, size: 52, color: Colors.amber), Text(t('Résultat : $score / 5 • Meilleur : $best / 5', 'النتيجة: $score / 5 • الأفضل: $best / 5', 'Score: $score / 5 • Best: $best / 5'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)), FilledButton(onPressed: _restart, child: Text(t('Rejouer', 'إعادة الاختبار', 'Play again')))]);
