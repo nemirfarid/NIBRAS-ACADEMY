@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - main
+      - feature/1ap-math-adventure-first-course
     paths:
       - 'lib/**'
       - 'pubspec.yaml'
