@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nibras_academy/main.dart';
-import 'package:nibras_academy/1ap_math_adventure_course.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
