@@ -54,7 +54,7 @@ class _OneApNumbersAdventurePageState extends State<OneApNumbersAdventurePage> {
     if (mounted) setState(() => completed = true);
   }
   Future<void> _initializeLessonVideo() async {
-    final controller = VideoPlayerController.asset('assets/videos/1ap_numbers_$lang.mp4');
+    final controller = VideoPlayerController.asset('assets/videos/1ap-math-nombres-1-5_$lang.mp4');
     _videoController = controller;
     try {
       await controller.initialize();
