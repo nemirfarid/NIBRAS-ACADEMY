@@ -16,13 +16,14 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   int quantity = 0, index = 0, score = 0, attempts = 0, bestScore = 0, spatialPosition = 0;
   int? choice;
   final List<int> missedQuestions = [];
-  bool checked = false, finished = false, printing = false;
+  bool checked = false, finished = false, printing = false, practiceCompleted = false;
   yt.YoutubePlayerController? youtube;
   String get lang => widget.languageCode.toLowerCase().startsWith('ar') ? 'ar' : widget.languageCode.toLowerCase().startsWith('en') ? 'en' : 'fr';
   bool get rtl => lang == 'ar';
   String tr(String fr, String ar, String en) => rtl ? ar : lang == 'en' ? en : fr;
   String get progressKey => 'nibras_mastery_v1_' + widget.lesson.id;
   String get attemptsKey => 'nibras_attempts_v1_' + widget.lesson.id;
+  String get practiceKey => 'nibras_practice_done_v1_' + widget.lesson.id;
   int get target => widget.lesson.id == '1ap-math-zero' ? 0 : widget.lesson.id == '1ap-math-nombres-6-9' ? 8 : widget.lesson.id == '1ap-math-nombre-10' ? 10 : widget.lesson.id == '1ap-math-espace' ? 3 : 5;
   int get quantityLimit => widget.lesson.id == '1ap-math-nombres-1-5' ? 5 : widget.lesson.id == '1ap-math-nombres-6-9' ? 9 : 10;
 
@@ -39,7 +40,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   void dispose() { youtube?.close(); super.dispose(); }
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
-    if (mounted) setState(() { attempts = p.getInt(attemptsKey) ?? 0; bestScore = p.getInt(progressKey) ?? 0; });
+    if (mounted) setState(() { attempts = p.getInt(attemptsKey) ?? 0; bestScore = p.getInt(progressKey) ?? 0; practiceCompleted = p.getBool(practiceKey) ?? false; });
   }
 
   List<_Q> get qs {
@@ -108,6 +109,13 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
     if (mounted) setState(() => attempts = p.getInt(attemptsKey) ?? 0);
   }
   void _restart() => setState(() { index = 0; score = 0; choice = null; checked = false; finished = false; missedQuestions.clear(); });
+  Future<void> _markPracticeComplete() async {
+    if (practiceCompleted) return;
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(practiceKey, true);
+    if (mounted) setState(() => practiceCompleted = true);
+  }
+
   Future<void> _print() async {
     if (printing || rtl) return;
     setState(() => printing = true);
@@ -140,6 +148,26 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
         _section(tr('2. Comprendre','2. افهم','2. Understand'), widget.lesson.course(lang), Icons.lightbulb),
         _section(tr('3. Exemple guidé','3. مثال موجه','3. Guided example'), widget.lesson.example(lang), Icons.auto_awesome),
         _section(tr('4. À toi d’essayer','4. جرّب بنفسك','4. Try it yourself'), _practicePrompt, Icons.edit_note),
+        Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(practiceCompleted ? Icons.verified_rounded : Icons.flag_outlined, color: practiceCompleted ? Colors.green : const Color(0xff1456b8), size: 26),
+            const SizedBox(width: 10),
+            Expanded(child: Text(tr('Mission à la maison', 'مهمة في المنزل', 'At-home mission'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
+            if (practiceCompleted) const Icon(Icons.check_circle, color: Colors.green),
+          ]),
+          const SizedBox(height: 6),
+          Text(practiceCompleted
+            ? tr('Mission déclarée terminée. Bravo pour la pratique !', 'تم تسجيل إكمال المهمة. أحسنت في التطبيق!', 'Mission marked complete. Well done practising!')
+            : tr('Réalise l’activité avec des objets réels, puis valide-la ici.', 'أنجز النشاط باستعمال أشياء حقيقية، ثم أكد إكماله هنا.', 'Do the activity with real objects, then mark it complete here.')),
+          const SizedBox(height: 10),
+          SizedBox(width: double.infinity, child: FilledButton.icon(
+            onPressed: practiceCompleted ? null : _markPracticeComplete,
+            icon: Icon(practiceCompleted ? Icons.check : Icons.task_alt),
+            label: Text(practiceCompleted
+              ? tr('Mission validée', 'تم تأكيد المهمة', 'Mission completed')
+              : tr('J’ai terminé la mission', 'أنهيت المهمة', 'I completed the mission')),
+          )),
+        ]))),
         _lab(),
         if (youtube != null) Card(clipBehavior: Clip.antiAlias, child: Column(children: [
           ListTile(title: Text(tr('Vidéo pédagogique complémentaire','فيديو تعليمي تكميلي','Supplementary lesson video'))),
