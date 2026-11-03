@@ -13,7 +13,7 @@ class NibrasPremiumMathLessonPage extends StatefulWidget {
 }
 
 class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPage> {
-  int quantity = 0, index = 0, score = 0, attempts = 0, spatialPosition = 0;
+  int quantity = 0, index = 0, score = 0, attempts = 0, bestScore = 0, spatialPosition = 0;
   int? choice;
   bool checked = false, finished = false, printing = false;
   yt.YoutubePlayerController? youtube;
