@@ -19,6 +19,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   DateTime? nextReviewDate;
   int? choice;
   final List<int> missedQuestions = [];
+  bool reviewingMistakes = false;
   bool checked = false, finished = false, printing = false, practiceCompleted = false;
   yt.YoutubePlayerController? youtube;
   String get lang => widget.languageCode.toLowerCase().startsWith('ar') ? 'ar' : widget.languageCode.toLowerCase().startsWith('en') ? 'en' : 'fr';
@@ -58,6 +59,10 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
       nextReviewDate = due == null ? null : DateTime.tryParse(due);
     });
   }
+
+  List<_Q> get activeQuestions => reviewingMistakes
+      ? missedQuestions.map((questionIndex) => qs[questionIndex]).toList()
+      : qs;
 
   List<_Q> get qs {
     final id = widget.lesson.id;
@@ -112,11 +117,26 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   }
   Future<void> _check() async {
     if (choice == null || checked) return;
-    setState(() { checked = true; if (choice == qs[index].answer) { score++; } else { missedQuestions.add(index); } });
+    final currentQuestions = activeQuestions;
+    setState(() {
+      checked = true;
+      if (choice == currentQuestions[index].answer) {
+        score++;
+      } else if (!reviewingMistakes) {
+        missedQuestions.add(index);
+      }
+    });
   }
   Future<void> _next() async {
-    if (index < qs.length - 1) { setState(() { index++; choice = null; checked = false; }); return; }
+    final currentQuestions = activeQuestions;
+    if (index < currentQuestions.length - 1) {
+      setState(() { index++; choice = null; checked = false; });
+      return;
+    }
     setState(() => finished = true);
+    // A targeted retry is practice only: it must not inflate official attempts,
+    // mastery scores, XP, streaks or spaced-repetition intervals.
+    if (reviewingMistakes) return;
     final p = await SharedPreferences.getInstance();
     final old = p.getInt(progressKey) ?? 0;
     if (score > old) await p.setInt(progressKey, score);
@@ -136,7 +156,27 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
       nextReviewDate = learningRecord.dueDate;
     });
   }
-  void _restart() => setState(() { index = 0; score = 0; choice = null; checked = false; finished = false; missedQuestions.clear(); });
+  void _restart() => setState(() {
+    reviewingMistakes = false;
+    index = 0;
+    score = 0;
+    choice = null;
+    checked = false;
+    finished = false;
+    missedQuestions.clear();
+  });
+
+  void _startMistakeReview() {
+    if (missedQuestions.isEmpty) return;
+    setState(() {
+      reviewingMistakes = true;
+      index = 0;
+      score = 0;
+      choice = null;
+      checked = false;
+      finished = false;
+    });
+  }
   Future<void> _markPracticeComplete() async {
     if (practiceCompleted) return;
     final p = await SharedPreferences.getInstance();
@@ -359,14 +399,18 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   }
 
   Widget _quiz() {
-    final items = qs;
+    final items = activeQuestions;
     if (finished) {
       final mastered = score * 100 / items.length >= 85;
       return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
         Icon(mastered ? Icons.workspace_premium : Icons.school, size: 52, color: mastered ? Colors.amber : Colors.blue),
         Text(tr('Résultat : $score/' + items.length.toString(), 'النتيجة: $score/' + items.length.toString(), 'Result: $score/' + items.length.toString()), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 19)),
-        Text(mastered ? tr('Compétence maîtrisée !','أتقنت المهارة!','Skill mastered!') : tr('Révise la correction puis recommence.','راجع التصحيح ثم أعد المحاولة.','Review the explanation and try again.')),
-        if (missedQuestions.isNotEmpty) ...[
+        Text(reviewingMistakes
+            ? tr('Révision ciblée terminée : ' + score.toString() + '/' + items.length.toString(), 'انتهت المراجعة المركزة: ' + score.toString() + '/' + items.length.toString(), 'Targeted review complete: ' + score.toString() + '/' + items.length.toString())
+            : mastered
+                ? tr('Compétence maîtrisée !','أتقنت المهارة!','Skill mastered!')
+                : tr('Révise la correction puis recommence.','راجع التصحيح ثم أعد المحاولة.','Review the explanation and try again.')),
+        if (!reviewingMistakes && missedQuestions.isNotEmpty) ...[
           const Divider(height: 28),
           Align(alignment: AlignmentDirectional.centerStart, child: Text(tr('Révision de tes erreurs','مراجعة الأخطاء','Review your mistakes'), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17))),
           Text(tr('Relis chaque correction, puis recommence le défi pour consolider tes acquis.', 'اقرأ كل تصحيح ثم أعد التحدي لترسيخ ما تعلمته.', 'Read each explanation, then try the challenge again to strengthen your learning.')),
@@ -380,12 +424,20 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
             );
           }),
         ],
-        FilledButton(onPressed: _restart, child: Text(tr('Recommencer','إعادة المحاولة','Try again'))),
+        if (reviewingMistakes)
+          FilledButton(onPressed: _restart, child: Text(tr('Reprendre le quiz complet','إعادة الاختبار الكامل','Retake the full quiz')))
+        else ...[
+          if (missedQuestions.isNotEmpty)
+            FilledButton.tonal(onPressed: _startMistakeReview, child: Text(tr('Réessayer uniquement mes erreurs','أعد المحاولة في أخطائي فقط','Retry only my mistakes'))),
+          FilledButton(onPressed: _restart, child: Text(tr('Recommencer','إعادة المحاولة','Try again'))),
+        ],
       ])));
     }
     final q = items[index];
     return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(tr('5. Défi de maîtrise','5. تحدي الإتقان','5. Mastery challenge'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+      Text(reviewingMistakes
+          ? tr('Révision ciblée de tes erreurs','مراجعة مركزة لأخطائك','Targeted review of your mistakes')
+          : tr('5. Défi de maîtrise','5. تحدي الإتقان','5. Mastery challenge'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
       LinearProgressIndicator(value: (index + 1) / items.length),
       Text(tr('Question ' + (index + 1).toString() + '/' + items.length.toString(), 'السؤال ' + (index + 1).toString() + '/' + items.length.toString(), 'Question ' + (index + 1).toString() + '/' + items.length.toString())),
       Text(q.prompt, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
