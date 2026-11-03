@@ -7,3 +7,10 @@ build/
 .vscode/
 *.iml
 .DS_Store
+
+# Tutor backend secrets and local Python environment
+.env
+backend/.env
+backend/.venv/
+backend/__pycache__/
+*.pyc

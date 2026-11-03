@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '1ap_math_curriculum.dart';
 import '1ap_math_assessment.dart';
+import '1ap_math_adventure_course.dart';
 import 'lesson_pdf_service.dart';
 
 bool _isAp1Math(String level, String subject) {
@@ -161,12 +162,16 @@ class ChaptersPage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => LessonPage(
-                          level: level,
-                          subject: subject,
-                          chapter: entry.value,
-                          locale: locale,
-                        ),
+                        builder: (_) => pilot && entry.key == 0
+                            ? OneApNumbersAdventurePage(
+                                languageCode: locale.languageCode,
+                              )
+                            : LessonPage(
+                                level: level,
+                                subject: subject,
+                                chapter: entry.value,
+                                locale: locale,
+                              ),
                       ),
                     );
                   },

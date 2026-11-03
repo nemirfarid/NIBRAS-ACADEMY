@@ -1,5 +1,7 @@
 
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+import 'nibras_tutor_service.dart';
 
 /// Contenus pilotes originaux pour le parcours 1AP – Mathématiques.
 /// À confronter au manuel ONPS de l'année scolaire avant publication
@@ -210,6 +212,92 @@ class NibrasLessonPreview extends StatefulWidget {
 class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   int? selected;
   bool checked = false;
+  VideoPlayerController? _videoController;
+  bool _videoLoading = true;
+  bool _videoFailed = false;
+  bool _checkpointShown = false;
+  bool _checkpointAnswered = false;
+  int? _checkpointChoice;
+  String _tutorMode = 'welcome';
+  final NibrasTutorService _tutor = NibrasTutorService();
+  final TextEditingController _tutorInput = TextEditingController();
+  final List<Map<String, String>> _tutorMessages = [];
+  bool _tutorBusy = false;
+
+  String get _lang {
+    final code = widget.languageCode.toLowerCase();
+    if (code.startsWith('ar')) return 'ar';
+    if (code.startsWith('en')) return 'en';
+    return 'fr';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  @override
+  void didUpdateWidget(covariant NibrasLessonPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.lesson.id != widget.lesson.id ||
+        oldWidget.languageCode != widget.languageCode) {
+      _videoController?.dispose();
+      _videoLoading = true;
+      _videoFailed = false;
+      _checkpointShown = false;
+      _checkpointAnswered = false;
+      _checkpointChoice = null;
+      _tutorMode = 'welcome';
+      _initVideo();
+    }
+  }
+
+  Future<void> _initVideo() async {
+    final controller = VideoPlayerController.asset(
+      'assets/videos/' + widget.lesson.id + '_' + _lang + '.mp4',
+    );
+    _videoController = controller;
+    try {
+      await controller.initialize();
+      controller.addListener(_watchInteractiveCheckpoint);
+      if (!mounted) return;
+      setState(() => _videoLoading = false);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _videoLoading = false;
+        _videoFailed = true;
+      });
+    }
+  }
+
+  void _watchInteractiveCheckpoint() {
+    final controller = _videoController;
+    if (!mounted || controller == null || !controller.value.isInitialized ||
+        _checkpointShown || controller.value.duration.inMilliseconds == 0) return;
+    final trigger = controller.value.duration.inMilliseconds * 0.55;
+    if (controller.value.position.inMilliseconds >= trigger) {
+      _checkpointShown = true;
+      controller.pause();
+      setState(() {});
+    }
+  }
+
+  Future<void> _resumeAfterCheckpoint() async {
+    final controller = _videoController;
+    if (controller == null || !_checkpointAnswered) return;
+    await controller.play();
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    _tutorInput.dispose();
+    _tutor.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,6 +325,8 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
           _section(labels.$1, lesson.objective(lang)),
           _section(labels.$2, lesson.course(lang)),
           _section(labels.$3, lesson.example(lang)),
+          _videoCard(lang),
+          _professorPanel(lang),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -297,9 +387,162 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
             ),
           ),
           _section(labels.$6, lesson.remember(lang)),
+          const SizedBox(height: 8),
+          NibrasPracticeWorkshop(lesson: lesson, languageCode: lang),
         ],
       ),
     );
+  }
+
+  Widget _videoCard(String language) {
+    final controller = _videoController;
+    final title = language == 'ar' ? 'فيديو الدرس باللغة العربية' : language == 'en' ? 'Lesson video in English' : 'Vidéo du cours en français';
+    final message = language == 'ar' ? 'فيديو مدمج يعمل دون إنترنت' : language == 'en' ? 'Offline video included in the app' : 'Vidéo intégrée, disponible hors connexion';
+    return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(padding: const EdgeInsets.all(14), child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold))),
+      AspectRatio(aspectRatio: 16 / 9, child: _videoLoading ? const Center(child: CircularProgressIndicator()) : _videoFailed || controller == null || !controller.value.isInitialized ? Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(language == 'ar' ? 'تعذر تحميل فيديو هذا الدرس.' : language == 'en' ? 'This lesson video could not be loaded.' : 'Impossible de charger la vidéo de cette leçon.', textAlign: TextAlign.center))) : VideoPlayer(controller)),
+      if (!_videoLoading && !_videoFailed && controller != null && controller.value.isInitialized) VideoProgressIndicator(controller, allowScrubbing: true, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+      if (_checkpointShown) _checkpointCard(language),
+      if (!_videoLoading && !_videoFailed && controller != null && controller.value.isInitialized) Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        IconButton(tooltip: language == 'ar' ? 'إعادة' : language == 'en' ? 'Restart' : 'Recommencer', onPressed: () async { await controller.seekTo(Duration.zero); await controller.play(); if (mounted) setState(() {}); }, icon: const Icon(Icons.replay)),
+        FilledButton.icon(onPressed: _checkpointShown && !_checkpointAnswered ? null : () async { if (controller.value.isPlaying) { await controller.pause(); } else { if (controller.value.position >= controller.value.duration) await controller.seekTo(Duration.zero); await controller.play(); } if (mounted) setState(() {}); }, icon: Icon(controller.value.isPlaying ? Icons.pause : Icons.play_arrow), label: Text(controller.value.isPlaying ? (language == 'ar' ? 'إيقاف مؤقت' : 'Pause') : (language == 'ar' ? 'تشغيل الفيديو' : language == 'en' ? 'Play video' : 'Lire la vidéo'))),
+      ]),
+      Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 14), child: Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
+    ]));
+  }
+
+  Widget _checkpointCard(String language) {
+    final isAr = language == 'ar';
+    final isEn = language == 'en';
+    final title = isAr ? 'توقف ذكي: أجب قبل متابعة الفيديو' : isEn ? 'Learning checkpoint: answer to continue' : 'Pause pédagogique : réponds pour continuer';
+    final prompt = widget.lesson.question(language);
+    final correct = _checkpointChoice == widget.lesson.correctIndex;
+    return Card(
+      color: const Color(0xfffff5d8),
+      margin: const EdgeInsets.all(12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+          const SizedBox(height: 8),
+          Text(prompt),
+          ...List.generate(widget.lesson.options.length, (i) => RadioListTile<int>(
+            dense: true, contentPadding: EdgeInsets.zero,
+            value: i, groupValue: _checkpointChoice,
+            onChanged: _checkpointAnswered ? null : (v) => setState(() => _checkpointChoice = v),
+            title: Text(widget.lesson.options[i]),
+          )),
+          if (_checkpointAnswered)
+            Text(correct ? (isAr ? 'أحسنت! إجابة صحيحة.' : isEn ? 'Excellent! Correct answer.' : 'Bravo ! Bonne réponse.')
+              : widget.lesson.correction(language),
+              style: TextStyle(fontWeight: FontWeight.bold, color: correct ? Colors.green : Colors.deepOrange)),
+          const SizedBox(height: 8),
+          if (!_checkpointAnswered)
+            FilledButton(onPressed: _checkpointChoice == null ? null : () => setState(() => _checkpointAnswered = true),
+              child: Text(isAr ? 'تحقق من إجابتي' : isEn ? 'Check my answer' : 'Vérifier ma réponse'))
+          else if (correct)
+            FilledButton.icon(onPressed: _resumeAfterCheckpoint, icon: const Icon(Icons.play_arrow),
+              label: Text(isAr ? 'متابعة الفيديو' : isEn ? 'Continue video' : 'Reprendre la vidéo'))
+          else
+            OutlinedButton(onPressed: () => setState(() { _checkpointChoice = null; _checkpointAnswered = false; }),
+              child: Text(isAr ? 'حاول مرة أخرى' : isEn ? 'Try again' : 'Réessayer')),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _askProfessor(String language) async {
+    final question = _tutorInput.text.trim();
+    if (question.isEmpty || _tutorBusy) return;
+    _tutorInput.clear();
+    setState(() {
+      _tutorBusy = true;
+      _tutorMessages.add({'role': 'student', 'text': question});
+    });
+    final answer = await _tutor.ask(
+      question: question,
+      language: language,
+      lessonTitle: widget.lesson.title(language),
+      lessonContext: [
+        widget.lesson.objective(language),
+        widget.lesson.course(language),
+        widget.lesson.example(language),
+        widget.lesson.remember(language),
+      ].join('\\n'),
+    );
+    if (!mounted) return;
+    final offline = language == 'ar'
+        ? 'يمكنني مساعدتك دون إنترنت: عدّ العناصر واحداً واحداً، ثم قل العدد الأخير. اطلب تلميحاً أو شرحاً آخر من الأزرار أعلاه.'
+        : language == 'en'
+            ? 'I can still help offline: count each object once, then say the last number. Use the hint and alternative explanation buttons above.'
+            : 'Je peux continuer à t’aider hors ligne : compte chaque objet une seule fois, puis donne le dernier nombre. Utilise les boutons indice et explication ci-dessus.';
+    setState(() {
+      _tutorBusy = false;
+      _tutorMessages.add({'role': 'teacher', 'text': answer ?? offline});
+    });
+  }
+
+  Widget _professorPanel(String language) {
+    final isAr = language == 'ar';
+    final isEn = language == 'en';
+    final heading = isAr ? 'الأستاذ نبراس' : isEn ? 'Professor Nibras' : 'Professeur Nibras';
+    final intro = isAr ? 'أنا هنا لمساعدتك. اكتب سؤالك أو اختر نوع المساعدة.' : isEn ? 'I am here to help. Ask a question or choose a kind of help.' : 'Je suis là pour t’aider. Pose ta question ou choisis une aide.';
+    final responses = isAr
+      ? {'hint': 'ابدأ بعدّ كل عنصر مرة واحدة، وأشر إليه بإصبعك.', 'explain': 'العدد الأخير الذي تنطقه بعد عد جميع العناصر مرة واحدة يمثل الكمية الكلية.', 'why': widget.lesson.correction(language)}
+      : isEn
+      ? {'hint': 'Point to each object once. Do not skip an object or count it twice.', 'explain': 'Say the numbers in order. The last number you say is the total amount.', 'why': widget.lesson.correction(language)}
+      : {'hint': 'Pointe chaque objet une seule fois. Ne saute aucun objet et ne le compte pas deux fois.', 'explain': 'Compte dans l’ordre. Le dernier nombre prononcé indique la quantité totale.', 'why': widget.lesson.correction(language)};
+    final prompt = isAr ? 'اكتب سؤالك هنا...' : isEn ? 'Ask your question...' : 'Écris ta question ici...';
+    return Card(child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [const Icon(Icons.school, color: Colors.indigo), const SizedBox(width: 8),
+          Expanded(child: Text(heading, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+          const Chip(label: Text('AI + Offline')),
+        ]),
+        const SizedBox(height: 6),
+        Text(intro),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'hint'), icon: const Icon(Icons.lightbulb_outline),
+            label: Text(isAr ? 'تلميح' : isEn ? 'Hint' : 'Indice')),
+          OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'explain'), icon: const Icon(Icons.menu_book),
+            label: Text(isAr ? 'اشرح بطريقة أخرى' : isEn ? 'Explain another way' : 'Explique autrement')),
+          OutlinedButton.icon(onPressed: () => setState(() => _tutorMode = 'why'), icon: const Icon(Icons.question_answer),
+            label: Text(isAr ? 'لماذا؟' : isEn ? 'Why?' : 'Pourquoi ?')),
+        ]),
+        if (_tutorMode != 'welcome') ...[
+          const SizedBox(height: 8),
+          Container(width: double.infinity, padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.indigo.withValues(alpha: .06), borderRadius: BorderRadius.circular(12)),
+            child: Text(responses[_tutorMode] ?? intro)),
+        ],
+        if (_tutorMessages.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ..._tutorMessages.take(8).map((m) => Align(
+            alignment: m['role'] == 'student' ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
+            child: Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(10),
+              constraints: const BoxConstraints(maxWidth: 310),
+              decoration: BoxDecoration(color: m['role'] == 'student' ? Colors.blue.withValues(alpha: .10) : Colors.green.withValues(alpha: .10), borderRadius: BorderRadius.circular(12)),
+              child: Text(m['text'] ?? ''),
+            ),
+          )),
+        ],
+        const SizedBox(height: 10),
+        TextField(controller: _tutorInput, minLines: 1, maxLines: 3,
+          textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
+          decoration: InputDecoration(hintText: prompt, border: const OutlineInputBorder(),
+            suffixIcon: IconButton(onPressed: _tutorBusy ? null : () => _askProfessor(language),
+              icon: _tutorBusy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.send))),
+          onSubmitted: (_) => _askProfessor(language),
+        ),
+        const SizedBox(height: 6),
+        Text(isAr ? 'يعمل الإرشاد الأساسي دون إنترنت. المحادثة الذكية تتطلب اتصالاً بخادم آمن.' :
+          isEn ? 'Guided help works offline. Generative conversation needs a secure server connection.' :
+          'L’aide guidée fonctionne hors ligne. La conversation IA nécessite un serveur sécurisé.',
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+      ]),
+    ));
   }
 
   Widget _section(String title, String body) => Card(
@@ -316,4 +559,111 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
           ),
         ),
       );
+}
+
+
+/// Atelier de maîtrise hors ligne : défis progressifs et correction immédiate.
+class NibrasPracticeWorkshop extends StatefulWidget {
+  const NibrasPracticeWorkshop({super.key, required this.lesson, required this.languageCode});
+  final NibrasLessonContent lesson;
+  final String languageCode;
+  @override
+  State<NibrasPracticeWorkshop> createState() => _NibrasPracticeWorkshopState();
+}
+
+class _NibrasPracticeWorkshopState extends State<NibrasPracticeWorkshop> {
+  int index = 0;
+  int score = 0;
+  int? choice;
+  bool checked = false;
+  String get lang => widget.languageCode.toLowerCase().startsWith('ar') ? 'ar' : widget.languageCode.toLowerCase().startsWith('en') ? 'en' : 'fr';
+  String tr(String fr, String ar, String en) => lang == 'ar' ? ar : lang == 'en' ? en : fr;
+
+  List<_NibrasDrill> get drills {
+    switch (widget.lesson.id) {
+      case '1ap-math-nombres-1-5':
+        return [
+          _NibrasDrill(['Combien font 2 objets et encore 1 ?', 'كم يساوي عنصران وعنصر آخر؟', 'How many are 2 objects and 1 more?'], [['2','3','4'],['2','3','4'],['2','3','4']], 1, ['2 puis 1 de plus : 3.', '2 ثم عنصر واحد: 3.', '2 and 1 more make 3.']),
+          _NibrasDrill(['Quel nombre vient après 3 ?', 'ما العدد الذي يأتي بعد 3؟', 'Which number comes after 3?'], [['2','4','5'],['2','4','5'],['2','4','5']], 1, ['La suite est 1, 2, 3, 4, 5.', 'الترتيب هو 1، 2، 3، 4، 5.', 'The sequence is 1, 2, 3, 4, 5.']),
+        ];
+      case '1ap-math-espace':
+        return [
+          _NibrasDrill(['Le crayon est dans la trousse. Où est-il ?', 'القلم داخل المقلمة. أين يوجد؟', 'The pencil is in the pencil case. Where is it?'], [['Dans','Sous','Derrière'],['داخل','تحت','خلف'],['Inside','Under','Behind']], 0, ['« Dans » signifie à l’intérieur.', '«داخل» تعني في باطن الشيء.', '“Inside” means within something.']),
+          _NibrasDrill(['Quel mot est le contraire de « devant » ?', 'ما عكس كلمة «أمام»؟', 'What is the opposite of “in front”?'], [['Sur','Derrière','Près'],['فوق','خلف','قريب'],['On','Behind','Near']], 1, ['Devant et derrière sont opposés.', 'أمام وخلف موقعان متعاكسان.', 'In front and behind are opposites.']),
+        ];
+      case '1ap-math-nombres-6-9':
+        return [
+          _NibrasDrill(['Quel nombre vient après 6 ?', 'ما العدد الذي يأتي بعد 6؟', 'Which number comes after 6?'], [['5','7','9'],['5','7','9'],['5','7','9']], 1, ['Après 6, on dit 7.', 'بعد 6 نقول 7.', 'After 6 comes 7.']),
+          _NibrasDrill(['Combien de fleurs vois-tu ? 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼', 'كم زهرة ترى؟ 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼', 'How many flowers? 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼 🌼'], [['8','9','10'],['8','9','10'],['8','9','10']], 1, ['Il y a 9 fleurs.', 'هناك 9 زهرات.', 'There are 9 flowers.']),
+        ];
+      case '1ap-math-zero':
+        return [
+          _NibrasDrill(['Une boîte vide contient combien de cubes ?', 'كم مكعباً في علبة فارغة؟', 'How many cubes are in an empty box?'], [['0','1','2'],['0','1','2'],['0','1','2']], 0, ['Aucun objet correspond à 0.', 'عدم وجود أي عنصر يعني 0.', 'No objects means 0.']),
+          _NibrasDrill(['Quel symbole représente zéro ?', 'ما الرمز الذي يمثل الصفر؟', 'Which symbol represents zero?'], [['6','0','9'],['6','0','9'],['6','0','9']], 1, ['Le symbole du zéro est 0.', 'رمز الصفر هو 0.', 'The symbol for zero is 0.']),
+        ];
+      default:
+        return [
+          _NibrasDrill(['Quel nombre vient après 9 ?', 'ما العدد الذي يأتي بعد 9؟', 'Which number comes after 9?'], [['8','10','7'],['8','10','7'],['8','10','7']], 1, ['10 vient juste après 9.', 'يأتي 10 مباشرة بعد 9.', '10 comes just after 9.']),
+          _NibrasDrill(['Combien faut-il ajouter à 9 pour obtenir 10 ?', 'كم نضيف إلى 9 لنحصل على 10؟', 'How many must we add to 9 to make 10?'], [['1','2','0'],['1','2','0'],['1','2','0']], 0, ['9 plus 1 donne 10.', '9 زائد 1 يساوي 10.', '9 plus 1 equals 10.']),
+        ];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = drills;
+    final item = items[index];
+    final langIndex = lang == 'ar' ? 1 : lang == 'en' ? 2 : 0;
+    final options = item.options[langIndex];
+    final correct = choice == item.answer;
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.explore_rounded, color: Color(0xff3157c8)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(tr('Défis du jeune explorateur', 'تحديات المستكشف الصغير', 'Young explorer challenges'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
+            Text((index + 1).toString() + '/' + items.length.toString()),
+          ]),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(value: (index + 1) / items.length),
+          const SizedBox(height: 14),
+          Text(item.question[langIndex], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          for (int i = 0; i < options.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: OutlinedButton(
+                onPressed: checked ? null : () => setState(() => choice = i),
+                style: OutlinedButton.styleFrom(side: BorderSide(color: checked && i == item.answer ? Colors.green : choice == i ? const Color(0xff3157c8) : Colors.black26)),
+                child: Text(options[i]),
+              ),
+            ),
+          if (checked) ...[
+            Text(correct ? tr('Bravo ! Bonne réponse.', 'أحسنت! إجابة صحيحة.', 'Well done! Correct.') : tr('Observe la correction et poursuis.', 'لاحظ التصحيح ثم تابع.', 'Study the correction and continue.'), style: TextStyle(fontWeight: FontWeight.bold, color: correct ? Colors.green : Colors.deepOrange)),
+            Text(item.explanation[langIndex]),
+          ],
+          const SizedBox(height: 10),
+          if (!checked)
+            FilledButton(onPressed: choice == null ? null : () => setState(() { checked = true; if (correct) score++; }), child: Text(tr('Vérifier ma réponse', 'تحقق من إجابتي', 'Check my answer')))
+          else if (index < items.length - 1)
+            FilledButton(onPressed: () => setState(() { index++; choice = null; checked = false; }), child: Text(tr('Défi suivant', 'التحدي التالي', 'Next challenge')))
+          else ...[
+            Text(tr('Résultat : ' + score.toString() + '/' + items.length.toString(), 'النتيجة: ' + score.toString() + '/' + items.length.toString(), 'Score: ' + score.toString() + '/' + items.length.toString()), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            OutlinedButton.icon(onPressed: () => setState(() { index = 0; score = 0; choice = null; checked = false; }), icon: const Icon(Icons.refresh_rounded), label: Text(tr('Recommencer', 'إعادة المحاولة', 'Try again'))),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+class _NibrasDrill {
+  const _NibrasDrill(this.question, this.options, this.answer, this.explanation);
+  final List<String> question;
+  final List<List<String>> options;
+  final int answer;
+  final List<String> explanation;
 }
