@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt;
 import '1ap_math_curriculum.dart';
 import 'lesson_pdf_service.dart';
+import 'nibras_learning_engine.dart';
 
 class NibrasPremiumMathLessonPage extends StatefulWidget {
   const NibrasPremiumMathLessonPage({super.key, required this.lesson, required this.languageCode});
@@ -14,6 +15,8 @@ class NibrasPremiumMathLessonPage extends StatefulWidget {
 
 class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPage> {
   int quantity = 0, index = 0, score = 0, attempts = 0, bestScore = 0, spatialPosition = 0;
+  int totalXp = 0, streakDays = 0, reviewIntervalDays = 0;
+  DateTime? nextReviewDate;
   int? choice;
   final List<int> missedQuestions = [];
   bool checked = false, finished = false, printing = false, practiceCompleted = false;
@@ -44,7 +47,16 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   void dispose() { youtube?.close(); super.dispose(); }
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
-    if (mounted) setState(() { attempts = p.getInt(attemptsKey) ?? 0; bestScore = p.getInt(progressKey) ?? 0; practiceCompleted = p.getBool(practiceKey) ?? false; });
+    if (mounted) setState(() {
+      attempts = p.getInt(attemptsKey) ?? 0;
+      bestScore = p.getInt(progressKey) ?? 0;
+      practiceCompleted = p.getBool(practiceKey) ?? false;
+      totalXp = p.getInt('nibras_xp_total_v1') ?? 0;
+      streakDays = p.getInt('nibras_activity_streak_v1') ?? 0;
+      reviewIntervalDays = p.getInt('nibras_srs_interval_v1_' + widget.lesson.id) ?? 0;
+      final due = p.getString('nibras_srs_due_v1_' + widget.lesson.id);
+      nextReviewDate = due == null ? null : DateTime.tryParse(due);
+    });
   }
 
   List<_Q> get qs {
@@ -110,7 +122,19 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
     if (score > old) await p.setInt(progressKey, score);
     if (mounted) setState(() => bestScore = score > old ? score : old);
     await p.setInt(attemptsKey, (p.getInt(attemptsKey) ?? 0) + 1);
-    if (mounted) setState(() => attempts = p.getInt(attemptsKey) ?? 0);
+    final learningRecord = await NibrasLearningEngine.recordAssessment(
+      preferences: p,
+      lessonId: widget.lesson.id,
+      score: score,
+      total: qs.length,
+    );
+    if (mounted) setState(() {
+      attempts = p.getInt(attemptsKey) ?? 0;
+      totalXp = learningRecord.totalXp;
+      streakDays = learningRecord.streakDays;
+      reviewIntervalDays = learningRecord.intervalDays;
+      nextReviewDate = learningRecord.dueDate;
+    });
   }
   void _restart() => setState(() { index = 0; score = 0; choice = null; checked = false; finished = false; missedQuestions.clear(); });
   Future<void> _markPracticeComplete() async {
@@ -162,6 +186,33 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
           ]),
           if (learningProgress >= 1) Text(tr('Bravo ! Tu as validé les deux étapes de cette leçon.', 'أحسنت! لقد أكملت مرحلتي هذا الدرس.', 'Great! You completed both steps of this lesson.'), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w700)),
         ]))),
+        Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.auto_awesome, color: Color(0xffd28b00), size: 27),
+              const SizedBox(width: 10),
+              Expanded(child: Text(tr('NIBRAS IQ • Mémoire intelligente', 'NIBRAS IQ • الذاكرة الذكية', 'NIBRAS IQ • Smart memory'),
+                style: const TextStyle(fontWeight: FontWeight.w900))),
+              Text('$totalXp XP', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xff1456b8))),
+            ]),
+            const SizedBox(height: 8),
+            Text(nextReviewDate == null
+              ? tr('La première révision sera programmée après ton premier défi.', 'ستتم برمجة المراجعة الأولى بعد أول تحدٍ.', 'Your first review will be scheduled after your first challenge.')
+              : tr('Prochaine révision : ${nextReviewDate!.day.toString().padLeft(2, '0')}/${nextReviewDate!.month.toString().padLeft(2, '0')}/${nextReviewDate!.year} • dans ${reviewIntervalDays} jour(s).',
+                  'المراجعة القادمة: ${nextReviewDate!.day.toString().padLeft(2, '0')}/${nextReviewDate!.month.toString().padLeft(2, '0')}/${nextReviewDate!.year} • بعد ${reviewIntervalDays} يوم.',
+                  'Next review: ${nextReviewDate!.day.toString().padLeft(2, '0')}/${nextReviewDate!.month.toString().padLeft(2, '0')}/${nextReviewDate!.year} • in ${reviewIntervalDays} day(s).')),
+            const SizedBox(height: 6),
+            Row(children: [
+              const Icon(Icons.local_fire_department, color: Colors.deepOrange, size: 20),
+              const SizedBox(width: 5),
+              Text(tr('Série : $streakDays jour(s)', 'السلسلة: $streakDays يوم', 'Streak: $streakDays day(s)')),
+              const Spacer(),
+              Text(tr('XP gagnés à chaque défi', 'نقاط XP مع كل تحدٍ', 'XP earned on each challenge'),
+                style: const TextStyle(fontSize: 11, color: Colors.black54)),
+            ]),
+          ],
+        ))),
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
           Icon(medalLevel == 3 ? Icons.emoji_events : medalLevel == 2 ? Icons.workspace_premium : medalLevel == 1 ? Icons.military_tech : Icons.stars_outlined,
             size: 34, color: medalLevel == 0 ? Colors.blueGrey : Colors.amber),
