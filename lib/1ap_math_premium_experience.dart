@@ -27,6 +27,8 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   int get target => widget.lesson.id == '1ap-math-zero' ? 0 : widget.lesson.id == '1ap-math-nombres-6-9' ? 8 : widget.lesson.id == '1ap-math-nombre-10' ? 10 : widget.lesson.id == '1ap-math-espace' ? 3 : 5;
   int get quantityLimit => widget.lesson.id == '1ap-math-nombres-1-5' ? 5 : widget.lesson.id == '1ap-math-nombres-6-9' ? 9 : 10;
   bool get quizMastered => qs.isNotEmpty && bestScore * 100 / qs.length >= 85;
+  int get medalLevel => qs.isEmpty ? 0 : bestScore * 100 / qs.length >= 100 ? 3 : bestScore * 100 / qs.length >= 85 ? 2 : bestScore * 100 / qs.length >= 60 ? 1 : 0;
+  int get nextMedalScore => qs.isEmpty ? 0 : medalLevel == 0 ? (qs.length * 0.6).ceil() : medalLevel == 1 ? (qs.length * 0.85).ceil() : qs.length;
   double get learningProgress => ((quizMastered ? 1 : 0) + (practiceCompleted ? 1 : 0)) / 2;
 
   @override
@@ -159,6 +161,22 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
             Chip(avatar: Icon(practiceCompleted ? Icons.check_circle : Icons.edit_note, size: 18, color: practiceCompleted ? Colors.green : null), label: Text(tr('Mission pratique', 'المهمة التطبيقية', 'Practice mission'))),
           ]),
           if (learningProgress >= 1) Text(tr('Bravo ! Tu as validé les deux étapes de cette leçon.', 'أحسنت! لقد أكملت مرحلتي هذا الدرس.', 'Great! You completed both steps of this lesson.'), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w700)),
+        ]))),
+        Card(child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
+          Icon(medalLevel == 3 ? Icons.emoji_events : medalLevel == 2 ? Icons.workspace_premium : medalLevel == 1 ? Icons.military_tech : Icons.stars_outlined,
+            size: 34, color: medalLevel == 0 ? Colors.blueGrey : Colors.amber),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(tr('Tes médailles', 'ميدالياتك', 'Your medals'), style: const TextStyle(fontWeight: FontWeight.w900)),
+            Text(medalLevel == 3
+              ? tr('Médaille OR • score parfait !', 'ميدالية ذهبية • نتيجة كاملة!', 'GOLD medal • perfect score!')
+              : medalLevel == 2
+                ? tr('Médaille ARGENT • compétence maîtrisée.', 'ميدالية فضية • أتقنت المهارة.', 'SILVER medal • skill mastered.')
+                : medalLevel == 1
+                  ? tr('Médaille BRONZE • bon début !', 'ميدالية برونزية • بداية جيدة!', 'BRONZE medal • a good start!')
+                  : tr('Commence le défi pour gagner ta première médaille.', 'ابدأ التحدي لتحصل على أول ميدالية.', 'Start the challenge to earn your first medal.')),
+            if (medalLevel < 3) Text(tr('Prochain objectif : $nextMedalScore/${qs.length} bonnes réponses.', 'الهدف التالي: $nextMedalScore/${qs.length} إجابة صحيحة.', 'Next target: $nextMedalScore/${qs.length} correct answers.')),
+          ])),
         ]))),
         _section(tr('1. Objectif','1. الهدف','1. Objective'), widget.lesson.objective(lang), Icons.flag),
         _section(tr('2. Comprendre','2. افهم','2. Understand'), widget.lesson.course(lang), Icons.lightbulb),
