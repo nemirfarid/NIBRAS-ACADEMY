@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt;
 import 'nibras_tutor_service.dart';
 
 /// Contenus pilotes originaux pour le parcours 1AP – Mathématiques.
@@ -52,6 +53,32 @@ class NibrasLessonContent {
   String question(String language) => _pick(language, questionFr, questionAr, questionEn);
   String correction(String language) => _pick(language, correctionFr, correctionAr, correctionEn);
   String remember(String language) => _pick(language, rememberFr, rememberAr, rememberEn);
+
+  String? get youtubeVideoId {
+    switch (id) {
+      case '1ap-math-nombres-1-5':
+        return 'Cpc_9JQo2IQ';
+      case '1ap-math-espace':
+        return 'uwlwDlbv81s';
+      case '1ap-math-nombres-6-9':
+        return 'W8iFtk6pTkc';
+      case '1ap-math-zero':
+        return 'QipydpIv9EU';
+      case '1ap-math-nombre-10':
+        return 'WIznpLo6-SQ';
+      default:
+        return null;
+    }
+  }
+
+  List<String> optionsFor(String language) {
+    if (id == '1ap-math-espace') {
+      if (language == 'ar') return const ['فوق', 'تحت', 'أمام'];
+      if (language == 'en') return const ['On', 'Under', 'In front'];
+      return const ['Sur', 'Sous', 'Devant'];
+    }
+    return options;
+  }
 }
 
 String _pick(String language, String fr, String ar, String en) {
@@ -70,9 +97,9 @@ const List<NibrasLessonContent> nibras1ApMathLessons = [
     objectiveFr: 'Compter une petite collection et associer sa quantité à un nombre de 1 à 5.',
     objectiveAr: 'عد مجموعة صغيرة وربط كميتها بعدد من 1 إلى 5.',
     objectiveEn: 'Count a small group and match its quantity to a number from 1 to 5.',
-    courseFr: 'Un nombre indique combien d’objets il y a. Pour compter, montre chaque objet une seule fois. Le dernier nombre prononcé donne la quantité totale.',
-    courseAr: 'يدل العدد على كمية الأشياء. عند العد، أشر إلى كل عنصر مرة واحدة. العدد الأخير الذي تنطقه يمثل الكمية كلها.',
-    courseEn: 'A number tells how many objects there are. Point to each object once. The last number you say is the total quantity.',
+    courseFr: 'Un nombre indique une quantité. Pour compter correctement, aligne les objets ou parcours-les de gauche à droite. Touche chaque objet une seule fois en disant : 1, 2, 3… Le dernier mot-nombre prononcé donne le total. Exemple : si tu dis 1, 2, 3, 4, la collection contient quatre objets. Tu peux ensuite vérifier en montrant quatre doigts. Deux collections peuvent avoir des objets différents mais la même quantité. Le chiffre écrit permet de garder la trace de cette quantité : 1, 2, 3, 4 ou 5.',
+    courseAr: 'يدل العدد على كمية الأشياء. للعد الصحيح، رتّب الأشياء أو انتقل بينها من اليسار إلى اليمين. أشر إلى كل عنصر مرة واحدة وقل: 1، 2، 3… العدد الأخير الذي تنطقه يمثل الكمية كلها. إذا قلت 1، 2، 3، 4 فالمجموعة تضم أربعة عناصر. يمكنك التحقق باستعمال أربعة أصابع. قد تختلف الأشياء وتبقى الكمية نفسها. نكتب الكمية باستعمال الرقم المناسب: 1، 2، 3، 4 أو 5.',
+    courseEn: 'A number tells the quantity in a group. To count accurately, arrange the objects or move from left to right. Touch each object once while saying 1, 2, 3… The last number said is the total. If you say 1, 2, 3, 4, there are four objects. Check by holding up four fingers. Different objects can have the same quantity. We write the quantity using its numeral: 1, 2, 3, 4 or 5.',
     exampleFr: '🍎 🍎 🍎 : il y a 3 pommes. On associe cette collection au nombre 3.',
     exampleAr: '🍎 🍎 🍎 : لدينا 3 تفاحات. نربط هذه المجموعة بالعدد 3.',
     exampleEn: '🍎 🍎 🍎: there are 3 apples. Match this group with number 3.',
@@ -122,9 +149,9 @@ const List<NibrasLessonContent> nibras1ApMathLessons = [
     objectiveFr: 'Dénombrer une collection et associer sa quantité aux nombres de 6 à 9.',
     objectiveAr: 'عد مجموعة وربط كميتها بالأعداد من 6 إلى 9.',
     objectiveEn: 'Count a group and match its quantity to numbers 6 to 9.',
-    courseFr: 'Après 5 viennent 6, 7, 8 et 9. Pour ne rien oublier, pointe chaque objet au moment où tu prononces le nombre.',
-    courseAr: 'بعد 5 تأتي 6 و7 و8 و9. حتى لا تنسى أي عنصر، أشر إليه عند نطق العدد.',
-    courseEn: 'After 5 come 6, 7, 8 and 9. Point to each object as you say its number.',
+    courseFr: 'Après 5 viennent 6, 7, 8 et 9. Lis la suite lentement : 5, 6, 7, 8, 9. Pour compter une collection, déplace un objet dans une zone « déjà comptés » à chaque nombre prononcé. Ainsi, tu ne comptes rien deux fois. Compare ensuite deux groupes : celui qui a le plus d’objets a la plus grande quantité. Pour vérifier 8 objets, tu peux les organiser en deux rangées de 4.',
+    courseAr: 'بعد 5 تأتي 6 و7 و8 و9. اقرأ الترتيب ببطء: 5، 6، 7، 8، 9. عند عد مجموعة، انقل كل عنصر إلى جهة «تم عده» مع نطق العدد حتى لا تعده مرتين. بعد ذلك قارن بين مجموعتين: المجموعة التي تحتوي على عناصر أكثر لها كمية أكبر. ويمكن ترتيب 8 عناصر في صفين، في كل صف 4 عناصر.',
+    courseEn: 'After 5 come 6, 7, 8 and 9. Say the sequence slowly: 5, 6, 7, 8, 9. When counting a group, move each object to a “counted” area as you say its number. This prevents counting it twice. Then compare two groups: the group with more objects has the greater quantity. You can arrange 8 objects in two rows of 4 to check.',
     exampleFr: '⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ : cette collection contient 7 étoiles.',
     exampleAr: '⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐ : تحتوي هذه المجموعة على 7 نجوم.',
     exampleEn: '⭐ ⭐ ⭐ ⭐ ⭐ ⭐ ⭐: this group contains 7 stars.',
@@ -148,9 +175,9 @@ const List<NibrasLessonContent> nibras1ApMathLessons = [
     objectiveFr: 'Comprendre que zéro représente une quantité nulle.',
     objectiveAr: 'فهم أن الصفر يمثل كمية منعدمة.',
     objectiveEn: 'Understand that zero represents no objects.',
-    courseFr: 'Quand une collection ne contient aucun objet, sa quantité est zéro. Le symbole du zéro est 0.',
-    courseAr: 'عندما لا تحتوي المجموعة على أي عنصر، تكون كميتها صفراً. رمز الصفر هو 0.',
-    courseEn: 'When a group contains no objects, its quantity is zero. The symbol for zero is 0.',
+    courseFr: 'Zéro signifie qu’il n’y a aucun objet dans la collection. On écrit zéro avec le chiffre 0. Attention : zéro n’est pas la même chose qu’un objet. Si tu as 3 cubes et que tu les retires tous, il reste 0 cube. Si tu ajoutes un cube à une boîte vide, tu passes de 0 à 1. Le zéro peut aussi indiquer qu’une place dans une écriture de nombre est vide ; ici, retiens d’abord son sens : aucune quantité.',
+    courseAr: 'الصفر يعني عدم وجود أي عنصر في المجموعة، ونكتبه بالرقم 0. انتبه: الصفر ليس عنصراً واحداً. إذا كان لديك 3 مكعبات ثم أزلتها كلها، يبقى 0 مكعب. وإذا أضفت مكعباً إلى علبة فارغة، تنتقل من 0 إلى 1. تذكر المعنى الأساسي الآن: لا توجد أي كمية.',
+    courseEn: 'Zero means that a group has no objects. We write zero with the digit 0. Remember: zero is not one object. If you have 3 cubes and remove all of them, 0 cubes remain. If you put one cube into an empty box, the quantity changes from 0 to 1. For now, remember its main meaning: none.',
     exampleFr: 'Une assiette vide ne contient aucune pomme : 0 pomme.',
     exampleAr: 'الصحن الفارغ لا يحتوي على أي تفاحة: 0 تفاحة.',
     exampleEn: 'An empty plate has no apples: 0 apples.',
@@ -174,9 +201,9 @@ const List<NibrasLessonContent> nibras1ApMathLessons = [
     objectiveFr: 'Reconnaître le nombre 10 et constituer une collection de dix objets.',
     objectiveAr: 'التعرف على العدد 10 وتكوين مجموعة من عشرة عناصر.',
     objectiveEn: 'Recognize 10 and make a group of ten objects.',
-    courseFr: 'Après 9 vient 10. Pour vérifier une collection, compte chaque objet une seule fois et dans l’ordre.',
-    courseAr: 'يأتي 10 بعد 9. للتحقق من المجموعة، عد كل عنصر مرة واحدة وبالترتيب.',
-    courseEn: '10 comes after 9. To check a group, count each object once and in order.',
+    courseFr: 'Après 9 vient 10. Dix est une nouvelle quantité : 9 objets et encore 1 objet font 10 objets. Le nombre 10 s’écrit avec deux chiffres : 1 puis 0. Pour construire une collection de dix, compte lentement sans oublier ni répéter un objet. Tu peux aussi faire deux groupes de cinq : 5 et 5 font 10. Vérifie toujours en recomptant la collection.',
+    courseAr: 'يأتي العدد 10 بعد 9. عشرة تعني 9 عناصر وعنصراً واحداً إضافياً. نكتب العدد 10 برقمين: 1 ثم 0. لتكوين مجموعة من عشرة عناصر، عد ببطء دون نسيان أي عنصر أو تكراره. ويمكنك تقسيمها إلى مجموعتين، في كل مجموعة 5 عناصر: 5 و5 تساوي 10. تحقق دائماً بإعادة العد.',
+    courseEn: '10 comes after 9. Ten means 9 objects and 1 more. We write ten with two digits: 1 followed by 0. To make a group of ten, count slowly without missing or repeating an object. You can also make two groups of five: 5 and 5 make 10. Check by counting the whole group again.',
     exampleFr: '🍊 🍊 🍊 🍊 🍊 🍊 🍊 🍊 🍊 🍊 : dix oranges.',
     exampleAr: '🍊 🍊 🍊 🍊 🍊 🍊 🍊 🍊 🍊 🍊 : عشر برتقالات.',
     exampleEn: '🍊 🍊 🍊 🍊 🍊 🍊 🍊 🍊 🍊 🍊: ten oranges.',
@@ -213,6 +240,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   int? selected;
   bool checked = false;
   VideoPlayerController? _videoController;
+  yt.YoutubePlayerController? _youtubeController;
   bool _videoLoading = true;
   bool _videoFailed = false;
   bool _checkpointShown = false;
@@ -234,6 +262,18 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   @override
   void initState() {
     super.initState();
+    final youtubeId = widget.lesson.youtubeVideoId;
+    if (youtubeId != null) {
+      _youtubeController = yt.YoutubePlayerController.fromVideoId(
+        videoId: youtubeId,
+        autoPlay: false,
+        params: const yt.YoutubePlayerParams(
+          showFullscreenButton: true,
+          showControls: true,
+          strictRelatedVideos: true,
+        ),
+      );
+    }
     _initVideo();
   }
 
@@ -243,6 +283,13 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
     if (oldWidget.lesson.id != widget.lesson.id ||
         oldWidget.languageCode != widget.languageCode) {
       _videoController?.dispose();
+      _youtubeController?.close();
+      final youtubeId = widget.lesson.youtubeVideoId;
+      _youtubeController = youtubeId == null ? null : yt.YoutubePlayerController.fromVideoId(
+        videoId: youtubeId,
+        autoPlay: false,
+        params: const yt.YoutubePlayerParams(showFullscreenButton: true, showControls: true, strictRelatedVideos: true),
+      );
       _videoLoading = true;
       _videoFailed = false;
       _checkpointShown = false;
@@ -294,6 +341,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
   @override
   void dispose() {
     _videoController?.dispose();
+    _youtubeController?.close();
     _tutorInput.dispose();
     _tutor.dispose();
     super.dispose();
@@ -341,7 +389,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
                   Text(lesson.question(lang)),
                   const SizedBox(height: 8),
                   ...List.generate(
-                    lesson.options.length,
+                    lesson.optionsFor(lang).length,
                     (index) => RadioListTile<int>(
                       value: index,
                       groupValue: selected,
@@ -349,7 +397,7 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
                         selected = value;
                         checked = false;
                       }),
-                      title: Text(lesson.options[index]),
+                      title: Text(lesson.optionsFor(lang)[index]),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -408,6 +456,28 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
         FilledButton.icon(onPressed: _checkpointShown && !_checkpointAnswered ? null : () async { if (controller.value.isPlaying) { await controller.pause(); } else { if (controller.value.position >= controller.value.duration) await controller.seekTo(Duration.zero); await controller.play(); } if (mounted) setState(() {}); }, icon: Icon(controller.value.isPlaying ? Icons.pause : Icons.play_arrow), label: Text(controller.value.isPlaying ? (language == 'ar' ? 'إيقاف مؤقت' : 'Pause') : (language == 'ar' ? 'تشغيل الفيديو' : language == 'en' ? 'Play video' : 'Lire la vidéo'))),
       ]),
       Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 14), child: Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
+      if (_youtubeController != null) ...[
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Text(
+            language == 'ar' ? 'درس إضافي من يوتيوب' : language == 'en' ? 'Additional lesson from YouTube' : 'Vidéo pédagogique complémentaire YouTube',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        AspectRatio(
+          aspectRatio: 16 / 9,
+          child: yt.YoutubePlayer(controller: _youtubeController!, aspectRatio: 16 / 9),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            language == 'ar' ? 'يتطلب اتصالاً بالإنترنت. أوقف الفيديو المدمج قبل تشغيل فيديو يوتيوب.' : language == 'en' ? 'Internet connection required. Pause the offline video before playing YouTube.' : 'Connexion Internet requise. Mets en pause la vidéo locale avant de lancer YouTube.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+      ],
     ]));
   }
 
@@ -426,11 +496,11 @@ class _NibrasLessonPreviewState extends State<NibrasLessonPreview> {
           Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
           const SizedBox(height: 8),
           Text(prompt),
-          ...List.generate(widget.lesson.options.length, (i) => RadioListTile<int>(
+          ...List.generate(widget.lesson.optionsFor(language).length, (i) => RadioListTile<int>(
             dense: true, contentPadding: EdgeInsets.zero,
             value: i, groupValue: _checkpointChoice,
             onChanged: _checkpointAnswered ? null : (v) => setState(() => _checkpointChoice = v),
-            title: Text(widget.lesson.options[i]),
+            title: Text(widget.lesson.optionsFor(language)[i]),
           )),
           if (_checkpointAnswered)
             Text(correct ? (isAr ? 'أحسنت! إجابة صحيحة.' : isEn ? 'Excellent! Correct answer.' : 'Bravo ! Bonne réponse.')

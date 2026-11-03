@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '1ap_math_curriculum.dart';
 import '1ap_math_assessment.dart';
 import '1ap_math_adventure_course.dart';
+import '1ap_math_premium_experience.dart';
 import 'lesson_pdf_service.dart';
 
 bool _isAp1Math(String level, String subject) {
@@ -86,6 +87,11 @@ class ChaptersPage extends StatelessWidget {
                     ),
             ),
             const SizedBox(height: 16),
+            if (pilot)
+              _OneApMathProgressDashboard(
+                languageCode: locale.languageCode,
+              ),
+            const SizedBox(height: 8),
 
             // Évaluation générale du parcours 1AP Mathématiques.
             if (pilot)
@@ -162,8 +168,9 @@ class ChaptersPage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => pilot && entry.key == 0
-                            ? OneApNumbersAdventurePage(
+                        builder: (_) => pilot
+                            ? NibrasPremiumMathLessonPage(
+                                lesson: nibras1ApMathLessons[entry.key],
                                 languageCode: locale.languageCode,
                               )
                             : LessonPage(
@@ -180,6 +187,231 @@ class ChaptersPage extends StatelessWidget {
             }),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _OneApMathProgressDashboard extends StatefulWidget {
+  const _OneApMathProgressDashboard({required this.languageCode});
+
+  final String languageCode;
+
+  @override
+  State<_OneApMathProgressDashboard> createState() =>
+      _OneApMathProgressDashboardState();
+}
+
+class _OneApMathProgressDashboardState
+    extends State<_OneApMathProgressDashboard> {
+  bool loading = true;
+  int mastered = 0;
+  int practiceDone = 0;
+  int attempts = 0;
+  int bronze = 0;
+  int silver = 0;
+  int gold = 0;
+  String? revisionLesson;
+  int revisionPercent = 0;
+  String? dueLessonId;
+  int dueReviewCount = 0;
+
+  String t(String fr, String ar, String en) {
+    final language = widget.languageCode.toLowerCase();
+    if (language.startsWith('ar')) return ar;
+    if (language.startsWith('en')) return en;
+    return fr;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    var masteredCount = 0;
+    var practiceCount = 0;
+    var attemptCount = 0;
+    var bronzeCount = 0;
+    var silverCount = 0;
+    var goldCount = 0;
+    String? weakestLesson;
+    String? firstDueLessonId;
+    var dueCount = 0;
+    final today = DateTime.now();
+    final todayKey = DateTime(today.year, today.month, today.day);
+    var weakestPercent = 101;
+
+    for (final lesson in nibras1ApMathLessons) {
+      final id = lesson.id;
+      final score = prefs.getInt('nibras_mastery_v1_$id') ?? 0;
+      final total = id == '1ap-math-zero' ? 6 : 8;
+      final tries = prefs.getInt('nibras_attempts_v1_$id') ?? 0;
+      final practice = prefs.getBool('nibras_practice_done_v1_$id') ?? false;
+      final dueRaw = prefs.getString('nibras_srs_due_v1_$id');
+      final dueDate = dueRaw == null ? null : DateTime.tryParse(dueRaw);
+      if (dueDate != null && !DateTime(dueDate.year, dueDate.month, dueDate.day).isAfter(todayKey)) {
+        dueCount++;
+        firstDueLessonId ??= id;
+      }
+      final percent = score * 100 / total;
+
+      if (percent >= 85) {
+        masteredCount++;
+      } else if (percent < weakestPercent) {
+        weakestPercent = percent.round();
+        weakestLesson = lesson.title(widget.languageCode);
+      }
+      if (practice) practiceCount++;
+      attemptCount += tries;
+      if (percent >= 100) {
+        goldCount++;
+      } else if (percent >= 85) {
+        silverCount++;
+      } else if (percent >= 60) {
+        bronzeCount++;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      mastered = masteredCount;
+      practiceDone = practiceCount;
+      attempts = attemptCount;
+      bronze = bronzeCount;
+      silver = silverCount;
+      gold = goldCount;
+      revisionLesson = weakestLesson;
+      revisionPercent = weakestPercent == 101 ? 0 : weakestPercent;
+      dueLessonId = firstDueLessonId;
+      dueReviewCount = dueCount;
+      loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const total = 5;
+    final progress = mastered / total;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: loading
+            ? const LinearProgressIndicator()
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Icon(Icons.insights_rounded,
+                        color: Color(0xff0756c8), size: 28),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        t('Bilan de compétences', 'تقرير المهارات',
+                            'Skills report'),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900, fontSize: 17),
+                      ),
+                    ),
+                    Text('$mastered/$total',
+                        style: const TextStyle(fontWeight: FontWeight.w900)),
+                  ]),
+                  const SizedBox(height: 10),
+                  LinearProgressIndicator(value: progress, minHeight: 9),
+                  const SizedBox(height: 8),
+                  Text(t(
+                    '$mastered leçons maîtrisées sur $total (score minimum : 85 %).',
+                    'أتقنت $mastered دروس من أصل $total (الحد الأدنى: 85٪).',
+                    '$mastered of $total lessons mastered (minimum score: 85%).',
+                  )),
+                  const Divider(height: 22),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    Chip(
+                      avatar: const Icon(Icons.task_alt, color: Colors.green),
+                      label: Text(t('Missions : $practiceDone/$total',
+                          'المهام: $practiceDone/$total',
+                          'Practice: $practiceDone/$total')),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.replay_rounded),
+                      label: Text(t('$attempts essais',
+                          '$attempts محاولات', '$attempts attempts')),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.military_tech,
+                          color: Colors.brown),
+                      label: Text('$bronze'),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.workspace_premium,
+                          color: Colors.blueGrey),
+                      label: Text('$silver'),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.emoji_events,
+                          color: Colors.amber),
+                      label: Text('$gold'),
+                    ),
+                  ]),
+                  Text(
+                    mastered == total
+                        ? t('Excellent ! Toutes les leçons sont maîtrisées.',
+                            'ممتاز! أتقنت جميع الدروس.',
+                            'Excellent! Every lesson is mastered.')
+                        : t('Objectif suivant : maîtriser une leçon de plus.',
+                            'الهدف التالي: إتقان درس إضافي.',
+                            'Next goal: master one more lesson.'),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  if (dueReviewCount > 0 && dueLessonId != null) ...[
+                    const SizedBox(height: 12),
+                    Card(color: const Color(0xfffff4d6), child: ListTile(
+                      leading: const Icon(Icons.event_available_rounded, color: Color(0xff9b6200)),
+                      title: Text(t('Révisions à faire : $dueReviewCount', 'مراجعات مستحقة: $dueReviewCount', 'Reviews due: $dueReviewCount'), style: const TextStyle(fontWeight: FontWeight.w900)),
+                      subtitle: Text(t('Une notion est prête à être révisée. Fais une courte séance pour la mémoriser durablement.', 'هناك درس جاهز للمراجعة. أنجز جلسة قصيرة لترسيخ المعلومات.', 'A lesson is ready for review. Complete a short session to strengthen memory.')),
+                      trailing: const Icon(Icons.arrow_forward_rounded),
+                      onTap: () {
+                        final lesson = nibras1ApMathLessons.firstWhere((item) => item.id == dueLessonId);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => NibrasPremiumMathLessonPage(lesson: lesson, languageCode: widget.languageCode)));
+                      },
+                    )),
+                  ],
+                  if (revisionLesson != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xfffff4df),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.lightbulb_outline,
+                              color: Color(0xffa56500)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(t(
+                              'Révision conseillée : $revisionLesson (meilleur score actuel : $revisionPercent %). Reprends cette leçon avant le prochain défi.',
+                              'المراجعة المقترحة: $revisionLesson (أفضل نتيجة حالية: $revisionPercent٪). أعد هذا الدرس قبل التحدي القادم.',
+                              'Suggested revision: $revisionLesson (current best: $revisionPercent%). Review this lesson before the next challenge.',
+                            )),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  Text(
+                    t('Données enregistrées localement sur cet appareil.',
+                        'البيانات محفوظة محلياً على هذا الجهاز.',
+                        'Progress is stored locally on this device.'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
       ),
     );
   }
