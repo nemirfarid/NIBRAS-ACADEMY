@@ -13,7 +13,7 @@ class NibrasPremiumMathLessonPage extends StatefulWidget {
 }
 
 class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPage> {
-  int quantity = 0, index = 0, score = 0, attempts = 0;
+  int quantity = 0, index = 0, score = 0, attempts = 0, spatialPosition = 0;
   int? choice;
   bool checked = false, finished = false, printing = false;
   yt.YoutubePlayerController? youtube;
@@ -152,7 +152,38 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
       const SizedBox(height: 10), Text(body, style: const TextStyle(height: 1.5, fontSize: 15)),
     ])));
 
-  Widget _lab() => Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
+  Widget _lab() {
+    if (widget.lesson.id == '1ap-math-espace') {
+      final labels = [tr('SUR','فوق','ON'), tr('SOUS','تحت','UNDER'), tr('DANS','داخل','INSIDE'), tr('DEVANT','أمام','IN FRONT'), tr('DERRIÈRE','خلف','BEHIND')];
+      final descriptions = [
+        tr('Le jouet est posé au-dessus de la boîte.', 'اللعبة فوق الصندوق.', 'The toy is on top of the box.'),
+        tr('Le jouet est placé plus bas que la boîte.', 'اللعبة أسفل الصندوق.', 'The toy is below the box.'),
+        tr('Le jouet est à l’intérieur de la boîte.', 'اللعبة داخل الصندوق.', 'The toy is inside the box.'),
+        tr('Le jouet est placé devant la boîte.', 'اللعبة أمام الصندوق.', 'The toy is in front of the box.'),
+        tr('Le jouet est caché derrière la boîte.', 'اللعبة خلف الصندوق.', 'The toy is behind the box.'),
+      ];
+      return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(tr('4. Atelier des positions', '4. ورشة تحديد المواقع', '4. Position workshop'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+        const SizedBox(height: 8),
+        Text(tr('Choisis une position et observe la scène. Dis ensuite une phrase complète.', 'اختر موقعاً ولاحظ المشهد، ثم قل جملة كاملة.', 'Choose a position, observe the scene, then say a complete sentence.')),
+        const SizedBox(height: 14),
+        Container(height: 150, decoration: BoxDecoration(color: const Color(0xffeaf3ff), borderRadius: BorderRadius.circular(16)),
+          child: Stack(alignment: Alignment.center, children: [
+            Positioned(bottom: 12, child: Container(width: 120, height: 62, alignment: Alignment.center, decoration: BoxDecoration(color: const Color(0xffd99b54), border: Border.all(color: const Color(0xff80501f), width: 3), borderRadius: BorderRadius.circular(8)), child: Text(tr('BOÎTE','صندوق','BOX'), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black))),
+            if (spatialPosition == 0) const Positioned(bottom: 82, child: Text('🧸', style: TextStyle(fontSize: 38))),
+            if (spatialPosition == 1) const Positioned(bottom: 0, child: Text('🧸', style: TextStyle(fontSize: 34))),
+            if (spatialPosition == 2) const Positioned(bottom: 25, child: Text('🧸', style: TextStyle(fontSize: 30))),
+            if (spatialPosition == 3) const Positioned(bottom: 18, left: 22, child: Text('🧸', style: TextStyle(fontSize: 34))),
+            if (spatialPosition == 4) const Positioned(bottom: 18, right: 22, child: Text('🧸', style: TextStyle(fontSize: 34))),
+          ])),
+        const SizedBox(height: 10),
+        Wrap(spacing: 6, runSpacing: 6, alignment: WrapAlignment.center, children: List.generate(labels.length, (i) => ChoiceChip(label: Text(labels[i]), selected: spatialPosition == i, onSelected: (_) => setState(() => spatialPosition = i)))),
+        const SizedBox(height: 8),
+        Text(descriptions[spatialPosition], textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700)),
+        Text(tr('Défi oral : remplace « le jouet » par « le ballon », puis répète la phrase.', 'تحدٍّ شفهي: استبدل «اللعبة» بـ«الكرة» ثم أعد الجملة.', 'Speaking challenge: replace “the toy” with “the ball”, then repeat the sentence.'), textAlign: TextAlign.center),
+      ])));
+    }
+    return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
     Align(alignment: AlignmentDirectional.centerStart, child: Text(tr('4. Laboratoire interactif','4. المختبر التفاعلي','4. Interactive maths lab'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17))),
     Text(tr('Ajoute ou retire des objets et observe la quantité.', 'أضف العناصر أو احذفها ولاحظ الكمية.', 'Add or remove objects and observe the quantity.')),
     Wrap(alignment: WrapAlignment.center, children: List.generate(quantity, (_) => const Padding(padding: EdgeInsets.all(4), child: Text('🟡', style: TextStyle(fontSize: 26))))),
@@ -165,6 +196,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
     Text(tr('Défi : construis une collection de $target.', 'التحدي: كوّن مجموعة من $target.', 'Challenge: build a group of $target.')),
     if (quantity == target) Text(tr('Mission réussie !','نجحت المهمة!','Mission accomplished!'), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
   ])));
+  }
 
   Widget _quiz() {
     final items = qs;
