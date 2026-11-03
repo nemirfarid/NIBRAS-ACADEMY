@@ -15,6 +15,7 @@ class NibrasPremiumMathLessonPage extends StatefulWidget {
 class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPage> {
   int quantity = 0, index = 0, score = 0, attempts = 0, bestScore = 0, spatialPosition = 0;
   int? choice;
+  final List<int> missedQuestions = [];
   bool checked = false, finished = false, printing = false;
   yt.YoutubePlayerController? youtube;
   String get lang => widget.languageCode.toLowerCase().startsWith('ar') ? 'ar' : widget.languageCode.toLowerCase().startsWith('en') ? 'en' : 'fr';
@@ -94,7 +95,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   }
   Future<void> _check() async {
     if (choice == null || checked) return;
-    setState(() { checked = true; if (choice == qs[index].answer) score++; });
+    setState(() { checked = true; if (choice == qs[index].answer) { score++; } else { missedQuestions.add(index); } });
   }
   Future<void> _next() async {
     if (index < qs.length - 1) { setState(() { index++; choice = null; checked = false; }); return; }
@@ -106,7 +107,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
     await p.setInt(attemptsKey, (p.getInt(attemptsKey) ?? 0) + 1);
     if (mounted) setState(() => attempts = p.getInt(attemptsKey) ?? 0);
   }
-  void _restart() => setState(() { index = 0; score = 0; choice = null; checked = false; finished = false; });
+  void _restart() => setState(() { index = 0; score = 0; choice = null; checked = false; finished = false; missedQuestions.clear(); });
   Future<void> _print() async {
     if (printing || rtl) return;
     setState(() => printing = true);
@@ -252,6 +253,20 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
         Icon(mastered ? Icons.workspace_premium : Icons.school, size: 52, color: mastered ? Colors.amber : Colors.blue),
         Text(tr('Résultat : $score/' + items.length.toString(), 'النتيجة: $score/' + items.length.toString(), 'Result: $score/' + items.length.toString()), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 19)),
         Text(mastered ? tr('Compétence maîtrisée !','أتقنت المهارة!','Skill mastered!') : tr('Révise la correction puis recommence.','راجع التصحيح ثم أعد المحاولة.','Review the explanation and try again.')),
+        if (missedQuestions.isNotEmpty) ...[
+          const Divider(height: 28),
+          Align(alignment: AlignmentDirectional.centerStart, child: Text(tr('Révision de tes erreurs','مراجعة الأخطاء','Review your mistakes'), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17))),
+          Text(tr('Relis chaque correction, puis recommence le défi pour consolider tes acquis.', 'اقرأ كل تصحيح ثم أعد التحدي لترسيخ ما تعلمته.', 'Read each explanation, then try the challenge again to strengthen your learning.')),
+          ...missedQuestions.map((missedIndex) {
+            final missed = items[missedIndex];
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.lightbulb_outline, color: Colors.orange),
+              title: Text(missed.prompt, style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(tr('Bonne réponse : ', 'الإجابة الصحيحة: ', 'Correct answer: ') + missed.options[missed.answer] + '\\n' + missed.explanation),
+            );
+          }),
+        ],
         FilledButton(onPressed: _restart, child: Text(tr('Recommencer','إعادة المحاولة','Try again'))),
       ])));
     }
