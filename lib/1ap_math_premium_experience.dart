@@ -26,6 +26,8 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   String get practiceKey => 'nibras_practice_done_v1_' + widget.lesson.id;
   int get target => widget.lesson.id == '1ap-math-zero' ? 0 : widget.lesson.id == '1ap-math-nombres-6-9' ? 8 : widget.lesson.id == '1ap-math-nombre-10' ? 10 : widget.lesson.id == '1ap-math-espace' ? 3 : 5;
   int get quantityLimit => widget.lesson.id == '1ap-math-nombres-1-5' ? 5 : widget.lesson.id == '1ap-math-nombres-6-9' ? 9 : 10;
+  bool get quizMastered => qs.isNotEmpty && bestScore * 100 / qs.length >= 85;
+  double get learningProgress => ((quizMastered ? 1 : 0) + (practiceCompleted ? 1 : 0)) / 2;
 
   @override
   void initState() {
@@ -142,7 +144,21 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
             Text(tr('Ton parcours','مسارك التعليمي','Your learning progress'), style: const TextStyle(fontWeight: FontWeight.w800)),
             Text(tr('Meilleur score : ' + bestScore.toString() + '/' + qs.length.toString() + ' • Essais : ' + attempts.toString(), 'أفضل نتيجة: ' + bestScore.toString() + '/' + qs.length.toString() + ' • المحاولات: ' + attempts.toString(), 'Best score: ' + bestScore.toString() + '/' + qs.length.toString() + ' • Attempts: ' + attempts.toString())),
           ])),
-          Icon(bestScore * 100 / qs.length >= 85 ? Icons.workspace_premium : Icons.school_outlined, color: bestScore * 100 / qs.length >= 85 ? Colors.amber : Colors.blueGrey),
+          Icon(quizMastered ? Icons.workspace_premium : Icons.school_outlined, color: quizMastered ? Colors.amber : Colors.blueGrey),
+        ]))),
+        Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(tr('Étapes de maîtrise', 'مراحل الإتقان', 'Mastery steps'), style: const TextStyle(fontWeight: FontWeight.w800))),
+            Text('${(learningProgress * 100).round()}%', style: const TextStyle(fontWeight: FontWeight.w900)),
+          ]),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(value: learningProgress, minHeight: 8),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            Chip(avatar: Icon(quizMastered ? Icons.check_circle : Icons.school_outlined, size: 18, color: quizMastered ? Colors.green : null), label: Text(tr('Quiz maîtrisé', 'إتقان الاختبار', 'Quiz mastered'))),
+            Chip(avatar: Icon(practiceCompleted ? Icons.check_circle : Icons.edit_note, size: 18, color: practiceCompleted ? Colors.green : null), label: Text(tr('Mission pratique', 'المهمة التطبيقية', 'Practice mission'))),
+          ]),
+          if (learningProgress >= 1) Text(tr('Bravo ! Tu as validé les deux étapes de cette leçon.', 'أحسنت! لقد أكملت مرحلتي هذا الدرس.', 'Great! You completed both steps of this lesson.'), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w700)),
         ]))),
         _section(tr('1. Objectif','1. الهدف','1. Objective'), widget.lesson.objective(lang), Icons.flag),
         _section(tr('2. Comprendre','2. افهم','2. Understand'), widget.lesson.course(lang), Icons.lightbulb),
