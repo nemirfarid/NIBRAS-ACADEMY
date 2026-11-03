@@ -38,7 +38,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   void dispose() { youtube?.close(); super.dispose(); }
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
-    if (mounted) setState(() => attempts = p.getInt(attemptsKey) ?? 0);
+    if (mounted) setState(() { attempts = p.getInt(attemptsKey) ?? 0; bestScore = p.getInt(progressKey) ?? 0; });
   }
 
   List<_Q> get qs {
@@ -102,6 +102,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
     final p = await SharedPreferences.getInstance();
     final old = p.getInt(progressKey) ?? 0;
     if (score > old) await p.setInt(progressKey, score);
+    if (mounted) setState(() => bestScore = score > old ? score : old);
     await p.setInt(attemptsKey, (p.getInt(attemptsKey) ?? 0) + 1);
     if (mounted) setState(() => attempts = p.getInt(attemptsKey) ?? 0);
   }
