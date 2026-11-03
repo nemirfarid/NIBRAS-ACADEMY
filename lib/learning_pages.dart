@@ -211,6 +211,8 @@ class _OneApMathProgressDashboardState
   int bronze = 0;
   int silver = 0;
   int gold = 0;
+  String? revisionLesson;
+  int revisionPercent = 0;
 
   String t(String fr, String ar, String en) {
     final language = widget.languageCode.toLowerCase();
@@ -233,6 +235,8 @@ class _OneApMathProgressDashboardState
     var bronzeCount = 0;
     var silverCount = 0;
     var goldCount = 0;
+    String? weakestLesson;
+    var weakestPercent = 101;
 
     for (final lesson in nibras1ApMathLessons) {
       final id = lesson.id;
@@ -242,7 +246,12 @@ class _OneApMathProgressDashboardState
       final practice = prefs.getBool('nibras_practice_done_v1_$id') ?? false;
       final percent = score * 100 / total;
 
-      if (percent >= 85) masteredCount++;
+      if (percent >= 85) {
+        masteredCount++;
+      } else if (percent < weakestPercent) {
+        weakestPercent = percent.round();
+        weakestLesson = lesson.title(widget.languageCode);
+      }
       if (practice) practiceCount++;
       attemptCount += tries;
       if (percent >= 100) {
@@ -262,6 +271,8 @@ class _OneApMathProgressDashboardState
       bronze = bronzeCount;
       silver = silverCount;
       gold = goldCount;
+      revisionLesson = weakestLesson;
+      revisionPercent = weakestPercent == 101 ? 0 : weakestPercent;
       loading = false;
     });
   }
@@ -340,6 +351,31 @@ class _OneApMathProgressDashboardState
                             'Next goal: master one more lesson.'),
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
+                  if (revisionLesson != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xfffff4df),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.lightbulb_outline,
+                              color: Color(0xffa56500)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(t(
+                              'Révision conseillée : $revisionLesson (meilleur score actuel : $revisionPercent %). Reprends cette leçon avant le prochain défi.',
+                              'المراجعة المقترحة: $revisionLesson (أفضل نتيجة حالية: $revisionPercent٪). أعد هذا الدرس قبل التحدي القادم.',
+                              'Suggested revision: $revisionLesson (current best: $revisionPercent%). Review this lesson before the next challenge.',
+                            )),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     t('Données enregistrées localement sur cet appareil.',
