@@ -199,9 +199,9 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
             const SizedBox(height: 8),
             Text(nextReviewDate == null
               ? tr('La première révision sera programmée après ton premier défi.', 'ستتم برمجة المراجعة الأولى بعد أول تحدٍ.', 'Your first review will be scheduled after your first challenge.')
-              : tr('Prochaine révision : ${nextReviewDate!.day.toString().padLeft(2, '0')}/${nextReviewDate!.month.toString().padLeft(2, '0')}/${nextReviewDate!.year} • dans ${reviewIntervalDays} jour(s).',
-                  'المراجعة القادمة: ${nextReviewDate!.day.toString().padLeft(2, '0')}/${nextReviewDate!.month.toString().padLeft(2, '0')}/${nextReviewDate!.year} • بعد ${reviewIntervalDays} يوم.',
-                  'Next review: ${nextReviewDate!.day.toString().padLeft(2, '0')}/${nextReviewDate!.month.toString().padLeft(2, '0')}/${nextReviewDate!.year} • in ${reviewIntervalDays} day(s).')),
+              : tr("Prochaine révision : ${nextReviewDate!.day.toString().padLeft(2, '0')}/${nextReviewDate!.month.toString().padLeft(2, '0')}/${nextReviewDate!.year} • dans ${reviewIntervalDays} jour(s).",
+                  "المراجعة القادمة: ${nextReviewDate!.day.toString().padLeft(2, '0')}/${nextReviewDate!.month.toString().padLeft(2, '0')}/${nextReviewDate!.year} • بعد ${reviewIntervalDays} يوم.",
+                  "Next review: ${nextReviewDate!.day.toString().padLeft(2, '0')}/${nextReviewDate!.month.toString().padLeft(2, '0')}/${nextReviewDate!.year} • in ${reviewIntervalDays} day(s).")),
             const SizedBox(height: 6),
             Row(children: [
               const Icon(Icons.local_fire_department, color: Colors.deepOrange, size: 20),
