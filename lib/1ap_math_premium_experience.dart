@@ -23,6 +23,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   String get progressKey => 'nibras_mastery_v1_' + widget.lesson.id;
   String get attemptsKey => 'nibras_attempts_v1_' + widget.lesson.id;
   int get target => widget.lesson.id == '1ap-math-zero' ? 0 : widget.lesson.id == '1ap-math-nombres-6-9' ? 8 : widget.lesson.id == '1ap-math-nombre-10' ? 10 : widget.lesson.id == '1ap-math-espace' ? 3 : 5;
+  int get quantityLimit => widget.lesson.id == '1ap-math-nombres-1-5' ? 5 : widget.lesson.id == '1ap-math-nombres-6-9' ? 9 : 10;
 
   @override
   void initState() {
@@ -126,12 +127,14 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
         _section(tr('1. Objectif','1. الهدف','1. Objective'), widget.lesson.objective(lang), Icons.flag),
         _section(tr('2. Comprendre','2. افهم','2. Understand'), widget.lesson.course(lang), Icons.lightbulb),
         _section(tr('3. Exemple guidé','3. مثال موجه','3. Guided example'), widget.lesson.example(lang), Icons.auto_awesome),
+        _section(tr('4. À toi d’essayer','4. جرّب بنفسك','4. Try it yourself'), _practicePrompt, Icons.edit_note),
         _lab(),
         if (youtube != null) Card(clipBehavior: Clip.antiAlias, child: Column(children: [
           ListTile(title: Text(tr('Vidéo pédagogique complémentaire','فيديو تعليمي تكميلي','Supplementary lesson video'))),
           AspectRatio(aspectRatio: 16/9, child: yt.YoutubePlayer(controller: youtube!)),
           Padding(padding: const EdgeInsets.all(12), child: Text(tr('Internet requis pour la vidéo. Le cours et les exercices restent disponibles hors ligne.', 'يتطلب الفيديو الإنترنت. يبقى الدرس والتمارين متاحة دون اتصال.', 'Video requires internet. Lessons and exercises remain available offline.'))),
         ])),
+        _section(tr('Avant de répondre','قبل الإجابة','Before you answer'), _commonMistake, Icons.warning_amber_rounded),
         _quiz(),
         _section(tr('À retenir par cœur','للحفظ','Remember by heart'), widget.lesson.remember(lang), Icons.menu_book),
         Card(child: ListTile(leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
@@ -145,6 +148,36 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
             subtitle: Text(tr('Meilleur résultat : $best • Tentatives : $attempts', 'أفضل نتيجة: $best • المحاولات: $attempts', 'Best score: $best • Attempts: $attempts'))));
         }),
       ])));
+
+  String get _practicePrompt {
+    switch (widget.lesson.id) {
+      case '1ap-math-espace':
+        return tr('Place un crayon sur ton cahier, puis sous le cahier. Mets ensuite une gomme dans ta trousse et devant la trousse. Décris chaque position avec une phrase complète.', 'ضع قلماً فوق كراسك ثم تحته. ضع ممحاة داخل المقلمة ثم أمامها. صف كل موقع بجملة كاملة.', 'Put a pencil on your notebook, then under it. Put an eraser inside your pencil case, then in front of it. Describe each position in a full sentence.');
+      case '1ap-math-zero':
+        return tr('Pose 3 petits objets sur la table. Retire-les un par un en comptant à rebours : 3, 2, 1, 0. Montre la table vide et explique pourquoi on écrit 0.', 'ضع 3 أشياء صغيرة على الطاولة. أزلها واحداً تلو الآخر مع العد: 3، 2، 1، 0. أشر إلى الطاولة الفارغة واشرح لماذا نكتب 0.', 'Place 3 small objects on a table. Remove them one by one while counting down: 3, 2, 1, 0. Show the empty table and explain why we write 0.');
+      case '1ap-math-nombres-6-9':
+        return tr('Rassemble 6 à 9 objets sûrs (bouchons ou crayons). Fais une rangée, compte-les en les touchant une seule fois, puis forme deux groupes et recompte.', 'اجمع من 6 إلى 9 أشياء آمنة. رتبها في صف، وعدها بلمس كل عنصر مرة واحدة، ثم كوّن مجموعتين وأعد العد.', 'Gather 6 to 9 safe objects. Make a row, count by touching each once, then split them into two groups and count again.');
+      case '1ap-math-nombre-10':
+        return tr('Prends 10 objets. Fais deux rangées de 5. Compte chaque rangée, puis les deux rangées ensemble. Enlève un objet : combien en reste-t-il ?', 'خذ 10 أشياء. كوّن صفين، في كل صف 5. عد كل صف ثم الصفين معاً. أزل شيئاً واحداً: كم بقي؟', 'Take 10 objects. Make two rows of 5. Count each row, then both rows together. Remove one object: how many remain?');
+      default:
+        return tr('Prends 1 à 5 objets. Fais une collection, compte chaque objet en le touchant une seule fois, puis montre la même quantité avec tes doigts. Recommence avec une autre collection.', 'خذ من 1 إلى 5 أشياء. كوّن مجموعة وعد كل عنصر بلمسه مرة واحدة، ثم مثّل الكمية نفسها بأصابعك. أعد النشاط بمجموعة أخرى.', 'Take 1 to 5 objects. Make a group, count each object by touching it once, then show the same quantity with your fingers. Repeat with a different group.');
+    }
+  }
+
+  String get _commonMistake {
+    switch (widget.lesson.id) {
+      case '1ap-math-espace':
+        return tr('Ne confonds pas « sur » et « au-dessus » : « sur » indique généralement un contact avec le support. Observe aussi le point de vue avant de dire devant ou derrière.', 'لا تخلط بين «فوق» و«على»: كلمة «على» تدل غالباً على التلامس مع السطح. وانتبه إلى جهة النظر عند استعمال أمام أو خلف.', 'Do not confuse “on” with “above”: “on” usually means touching the support. Also check the viewpoint before using in front or behind.');
+      case '1ap-math-zero':
+        return tr('Zéro ne signifie pas « un petit objet ». Il signifie qu’il n’y a aucun objet dans la collection.', 'الصفر لا يعني شيئاً صغيراً، بل يعني عدم وجود أي عنصر في المجموعة.', 'Zero does not mean a tiny object. It means there are no objects in the group.');
+      case '1ap-math-nombres-6-9':
+        return tr('Ne commence pas à recompter une collection déjà comptée sans repère. Déplace chaque objet compté ou sépare-le pour éviter les oublis et les doubles comptages.', 'لا تعدّ المجموعة من جديد دون علامة. انقل كل عنصر تم عده أو افصله لتجنب النسيان والعد مرتين.', 'Do not recount without a marker. Move or separate each counted object to avoid skipping or counting twice.');
+      case '1ap-math-nombre-10':
+        return tr('10 n’est pas un seul chiffre : il s’écrit avec deux chiffres, 1 puis 0. Dix objets restent dix même s’ils sont rangés autrement.', '10 ليس رقماً واحداً، بل يكتب برقمين: 1 ثم 0. تبقى عشرة أشياء عشرة حتى إذا غيرنا ترتيبها.', '10 is not a single digit: it is written with two digits, 1 then 0. Ten objects remain ten even when rearranged.');
+      default:
+        return tr('Ne récite pas les nombres trop vite. Touche chaque objet une seule fois et garde le même ordre de comptage.', 'لا تردد الأعداد بسرعة. المس كل عنصر مرة واحدة وحافظ على ترتيب العد.', 'Do not rush through the number names. Touch each object once and keep a consistent counting order.');
+    }
+  }
 
   Widget _section(String title, String body, IconData icon) => Card(child: Padding(padding: const EdgeInsets.all(16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -186,11 +219,12 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
     return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
     Align(alignment: AlignmentDirectional.centerStart, child: Text(tr('4. Laboratoire interactif','4. المختبر التفاعلي','4. Interactive maths lab'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17))),
     Text(tr('Ajoute ou retire des objets et observe la quantité.', 'أضف العناصر أو احذفها ولاحظ الكمية.', 'Add or remove objects and observe the quantity.')),
-    Wrap(alignment: WrapAlignment.center, children: List.generate(quantity, (_) => const Padding(padding: EdgeInsets.all(4), child: Text('🟡', style: TextStyle(fontSize: 26))))),
+    Wrap(alignment: WrapAlignment.center, children: List.generate(quantityLimit, (i) => Padding(padding: const EdgeInsets.all(4), child: Container(width: 34, height: 34, alignment: Alignment.center, decoration: BoxDecoration(shape: BoxShape.circle, color: i < quantity ? const Color(0xffffd45c) : Colors.transparent, border: Border.all(color: const Color(0xff7a8798), width: 1.5)), child: i < quantity ? const Text('●', style: TextStyle(fontSize: 19, color: Color(0xff805000))) : const SizedBox.shrink())))),
     Text('$quantity', style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
+    Text(tr('Chaque cercle représente une unité. Compte les cercles remplis.', 'كل دائرة تمثل وحدة واحدة. عد الدوائر الممتلئة.', 'Each circle represents one unit. Count the filled circles.'), textAlign: TextAlign.center),
     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
       IconButton(onPressed: quantity == 0 ? null : () => setState(() => quantity--), icon: const Icon(Icons.remove_circle_outline)),
-      FilledButton.icon(onPressed: quantity >= 10 ? null : () => setState(() => quantity++), icon: const Icon(Icons.add), label: Text(tr('Ajouter','أضف','Add'))),
+      FilledButton.icon(onPressed: quantity >= quantityLimit ? null : () => setState(() => quantity++), icon: const Icon(Icons.add), label: Text(tr('Ajouter','أضف','Add'))),
       IconButton(onPressed: () => setState(() => quantity = 0), icon: const Icon(Icons.refresh)),
     ]),
     Text(tr('Défi : construis une collection de $target.', 'التحدي: كوّن مجموعة من $target.', 'Challenge: build a group of $target.')),
