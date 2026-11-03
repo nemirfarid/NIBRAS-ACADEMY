@@ -63,7 +63,7 @@ class _OneApMathAssessmentPageState
       correct: 1,
     ),
     _MathQuestion(
-      fr: 'Combien font 4 + 4 ?',
+      fr: 'Combien font 9 + 1 ?',
       ar: 'كم يساوي 4 + 4 ؟',
       en: 'What is 4 + 4?',
       answers: ['7', '8', '9'],
