@@ -204,11 +204,12 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
         Container(height: 150, decoration: BoxDecoration(color: const Color(0xffeaf3ff), borderRadius: BorderRadius.circular(16)),
           child: Stack(alignment: Alignment.center, children: [
             Positioned(bottom: 12, child: Container(width: 120, height: 62, alignment: Alignment.center, decoration: BoxDecoration(color: const Color(0xffd99b54), border: Border.all(color: const Color(0xff80501f), width: 3), borderRadius: BorderRadius.circular(8)), child: Text(tr('BOÎTE','صندوق','BOX'), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black))),
-            if (spatialPosition == 0) const Positioned(bottom: 82, child: Text('🧸', style: TextStyle(fontSize: 38))),
-            if (spatialPosition == 1) const Positioned(bottom: 0, child: Text('🧸', style: TextStyle(fontSize: 34))),
-            if (spatialPosition == 2) const Positioned(bottom: 25, child: Text('🧸', style: TextStyle(fontSize: 30))),
-            if (spatialPosition == 3) const Positioned(bottom: 18, left: 22, child: Text('🧸', style: TextStyle(fontSize: 34))),
-            if (spatialPosition == 4) const Positioned(bottom: 18, right: 22, child: Text('🧸', style: TextStyle(fontSize: 34))),
+            Positioned(
+              bottom: spatialPosition == 0 ? 82 : spatialPosition == 1 ? 0 : 18,
+              left: spatialPosition == 3 ? 22 : null,
+              right: spatialPosition == 4 ? 22 : null,
+              child: Text('🧸', style: TextStyle(fontSize: spatialPosition == 2 ? 30 : 36)),
+            ),
           ])),
         const SizedBox(height: 10),
         Wrap(spacing: 6, runSpacing: 6, alignment: WrapAlignment.center, children: List.generate(labels.length, (i) => ChoiceChip(label: Text(labels[i]), selected: spatialPosition == i, onSelected: (_) => setState(() => spatialPosition = i)))),
