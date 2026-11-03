@@ -126,6 +126,15 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
             const SizedBox(height: 8), Text(widget.lesson.title(lang), style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900)),
             Text(tr('Apprends, manipule, entraîne-toi et maîtrise.', 'تعلم وجرّب وتدرب وأتقن.', 'Learn, explore, practise and master.'), style: const TextStyle(color: Colors.white)),
           ])),
+        Card(child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
+          const Icon(Icons.insights_rounded, color: Color(0xff1456b8), size: 28),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(tr('Ton parcours','مسارك التعليمي','Your learning progress'), style: const TextStyle(fontWeight: FontWeight.w800)),
+            Text(tr('Meilleur score : ' + bestScore.toString() + '/' + qs.length.toString() + ' • Essais : ' + attempts.toString(), 'أفضل نتيجة: ' + bestScore.toString() + '/' + qs.length.toString() + ' • المحاولات: ' + attempts.toString(), 'Best score: ' + bestScore.toString() + '/' + qs.length.toString() + ' • Attempts: ' + attempts.toString())),
+          ])),
+          Icon(bestScore * 100 / qs.length >= 85 ? Icons.workspace_premium : Icons.school_outlined, color: bestScore * 100 / qs.length >= 85 ? Colors.amber : Colors.blueGrey),
+        ]))),
         _section(tr('1. Objectif','1. الهدف','1. Objective'), widget.lesson.objective(lang), Icons.flag),
         _section(tr('2. Comprendre','2. افهم','2. Understand'), widget.lesson.course(lang), Icons.lightbulb),
         _section(tr('3. Exemple guidé','3. مثال موجه','3. Guided example'), widget.lesson.example(lang), Icons.auto_awesome),
