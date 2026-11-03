@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:video_player/video_player.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt;
 import '1ap_math_curriculum.dart';
 import 'lesson_pdf_service.dart';
@@ -21,6 +22,11 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   final List<int> missedQuestions = [];
   bool reviewingMistakes = false;
   bool checked = false, finished = false, printing = false, practiceCompleted = false;
+  VideoPlayerController? localVideo;
+  bool localVideoReady = false, localVideoFailed = false;
+  int videoCheckpoint = 0;
+  int? videoChoice;
+  bool videoCheckpointVisible = false;
   yt.YoutubePlayerController? youtube;
   String get lang => widget.languageCode.toLowerCase().startsWith('ar') ? 'ar' : widget.languageCode.toLowerCase().startsWith('en') ? 'en' : 'fr';
   bool get rtl => lang == 'ar';
@@ -43,9 +49,51 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
     if (id != null) youtube = yt.YoutubePlayerController.fromVideoId(videoId: id, autoPlay: false,
       params: const yt.YoutubePlayerParams(showFullscreenButton: true, showControls: true, strictRelatedVideos: true));
     _load();
+    _initLocalVideo();
   }
   @override
-  void dispose() { youtube?.close(); super.dispose(); }
+  void dispose() { localVideo?.removeListener(_onLocalVideoTick); localVideo?.dispose(); youtube?.close(); super.dispose(); }
+
+  Future<void> _initLocalVideo() async {
+    final controller = VideoPlayerController.asset('assets/videos/${widget.lesson.id}_$lang.mp4');
+    localVideo = controller;
+    try {
+      await controller.initialize();
+      await controller.setLooping(false);
+      controller.addListener(_onLocalVideoTick);
+      if (mounted) setState(() => localVideoReady = true);
+    } catch (_) {
+      if (mounted) setState(() => localVideoFailed = true);
+      await controller.dispose();
+      if (identical(localVideo, controller)) localVideo = null;
+    }
+  }
+
+  void _onLocalVideoTick() {
+    final controller = localVideo;
+    if (controller == null || !controller.value.isInitialized || videoCheckpointVisible || videoCheckpoint >= 3) return;
+    // The offline-video builder creates four six-second scenes in each 24-second lesson.
+    final boundary = Duration(seconds: (videoCheckpoint + 1) * 6);
+    if (controller.value.position >= boundary) {
+      controller.pause();
+      if (mounted) setState(() { videoCheckpointVisible = true; videoChoice = null; });
+    }
+  }
+
+  Future<void> _answerVideoCheckpoint() async {
+    final controller = localVideo;
+    if (controller == null) return;
+    final indexes = [0, (qs.length / 2).floor(), qs.length - 1];
+    final question = qs[indexes[videoCheckpoint]];
+    if (videoChoice != question.answer) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Relis l’explication, puis réessaie.', 'راجع الشرح ثم حاول مجدداً.', 'Review the explanation and try again.'))));
+      return;
+    }
+    final nextCheckpoint = videoCheckpoint + 1;
+    setState(() { videoCheckpointVisible = false; videoCheckpoint = nextCheckpoint; videoChoice = null; });
+    await controller.seekTo(Duration(seconds: nextCheckpoint * 6) - const Duration(milliseconds: 250));
+    await controller.play();
+  }
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
     if (mounted) setState(() {
@@ -294,6 +342,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
           )),
         ]))),
         _lab(),
+        _localVideoSection(),
         if (youtube != null) Card(clipBehavior: Clip.antiAlias, child: Column(children: [
           ListTile(title: Text(tr('Vidéo pédagogique complémentaire','فيديو تعليمي تكميلي','Supplementary lesson video'))),
           AspectRatio(aspectRatio: 16/9, child: yt.YoutubePlayer(controller: youtube!)),
@@ -313,6 +362,32 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
             subtitle: Text(tr('Meilleur résultat : $best • Tentatives : $attempts', 'أفضل نتيجة: $best • المحاولات: $attempts', 'Best score: $best • Attempts: $attempts'))));
         }),
       ])));
+
+  Widget _localVideoSection() {
+    final title = tr('Vidéo animée hors connexion', 'فيديو متحرك دون اتصال', 'Offline animated lesson');
+    if (!localVideoReady || localVideo == null) {
+      return Card(child: ListTile(leading: const Icon(Icons.movie_outlined), title: Text(title), subtitle: Text(localVideoFailed
+        ? tr('Vidéo locale indisponible sur cette version.', 'الفيديو المحلي غير متاح في هذا الإصدار.', 'Offline video is unavailable in this build.')
+        : tr('Préparation de la vidéo…', 'جارٍ تجهيز الفيديو…', 'Preparing video…'))));
+    }
+    final controller = localVideo!;
+    final indexes = [0, (qs.length / 2).floor(), qs.length - 1];
+    final question = qs[indexes[videoCheckpoint.clamp(0, 2)]];
+    return Card(clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      ListTile(leading: const Icon(Icons.ondemand_video_rounded), title: Text(title), subtitle: Text(tr('Trois pauses pédagogiques intégrées', 'ثلاث محطات تعليمية مدمجة', 'Three built-in learning checkpoints'))),
+      AspectRatio(aspectRatio: controller.value.aspectRatio, child: VideoPlayer(controller)),
+      Padding(padding: const EdgeInsets.all(12), child: Row(children: [
+        Expanded(child: Text(tr('Étape vidéo : ' + videoCheckpoint.toString() + '/3', 'مرحلة الفيديو: ' + videoCheckpoint.toString() + '/3', 'Video checkpoint: ' + videoCheckpoint.toString() + '/3'))),
+        IconButton(onPressed: () async { if (controller.value.isPlaying) { await controller.pause(); } else if (!videoCheckpointVisible) { if (controller.value.position >= controller.value.duration) { setState(() => videoCheckpoint = 0); await controller.seekTo(Duration.zero); } await controller.play(); } if (mounted) setState(() {}); }, icon: Icon(controller.value.isPlaying ? Icons.pause_circle : Icons.play_circle, size: 34)),
+      ])),
+      if (videoCheckpointVisible) Padding(padding: const EdgeInsets.all(14), child: DecoratedBox(decoration: BoxDecoration(color: const Color(0xfffff4d6), borderRadius: BorderRadius.circular(14)), child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(tr('PAUSE DÉFI • Réponds pour continuer', 'توقف التحدي • أجب للمتابعة', 'CHALLENGE PAUSE • Answer to continue'), style: const TextStyle(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8), Text(question.prompt, style: const TextStyle(fontWeight: FontWeight.w700)),
+        ...List.generate(question.options.length, (i) => RadioListTile<int>(dense: true, value: i, groupValue: videoChoice, onChanged: (v) => setState(() => videoChoice = v), title: Text(question.options[i]))),
+        FilledButton.icon(onPressed: videoChoice == null ? null : _answerVideoCheckpoint, icon: const Icon(Icons.play_arrow), label: Text(tr('Valider et reprendre', 'تحقق وتابع', 'Check and resume'))),
+      ])))),
+    ]));
+  }
 
   String get _practicePrompt {
     switch (widget.lesson.id) {
