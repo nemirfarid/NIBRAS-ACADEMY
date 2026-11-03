@@ -60,6 +60,12 @@ class NibrasLessonContent {
         return 'Cpc_9JQo2IQ';
       case '1ap-math-espace':
         return 'uwlwDlbv81s';
+      case '1ap-math-nombres-6-9':
+        return 'W8iFtk6pTkc';
+      case '1ap-math-zero':
+        return 'QipydpIv9EU';
+      case '1ap-math-nombre-10':
+        return 'WIznpLo6-SQ';
       default:
         return null;
     }
