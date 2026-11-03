@@ -64,9 +64,9 @@ class _OneApMathAssessmentPageState
     ),
     _MathQuestion(
       fr: 'Combien font 9 + 1 ?',
-      ar: 'كم يساوي 4 + 4 ؟',
-      en: 'What is 4 + 4?',
-      answers: ['7', '8', '9'],
+      ar: 'كم يساوي 9 + 1 ؟',
+      en: 'What is 9 + 1?',
+      answers: ['9', '10', '11'],
       correct: 1,
     ),
     _MathQuestion(
