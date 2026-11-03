@@ -28,6 +28,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
   @override
   void initState() {
     super.initState();
+    if (widget.lesson.id == '1ap-math-zero') quantity = 3;
     final id = widget.lesson.youtubeVideoId;
     if (id != null) youtube = yt.YoutubePlayerController.fromVideoId(videoId: id, autoPlay: false,
       params: const yt.YoutubePlayerParams(showFullscreenButton: true, showControls: true, strictRelatedVideos: true));
