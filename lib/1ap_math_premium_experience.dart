@@ -203,7 +203,7 @@ class _NibrasPremiumMathLessonPageState extends State<NibrasPremiumMathLessonPag
         const SizedBox(height: 14),
         Container(height: 150, decoration: BoxDecoration(color: const Color(0xffeaf3ff), borderRadius: BorderRadius.circular(16)),
           child: Stack(alignment: Alignment.center, children: [
-            Positioned(bottom: 12, child: Container(width: 120, height: 62, alignment: Alignment.center, decoration: BoxDecoration(color: const Color(0xffd99b54), border: Border.all(color: const Color(0xff80501f), width: 3), borderRadius: BorderRadius.circular(8)), child: Text(tr('BOÎTE','صندوق','BOX'), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black))),
+            Positioned(bottom: 12, child: Container(width: 120, height: 62, alignment: Alignment.center, decoration: BoxDecoration(color: const Color(0xffd99b54), border: Border.all(color: const Color(0xff80501f), width: 3), borderRadius: BorderRadius.circular(8)), child: Text(tr('BOÎTE','صندوق','BOX'), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.black)))),
             Positioned(
               bottom: spatialPosition == 0 ? 82 : spatialPosition == 1 ? 0 : 18,
               left: spatialPosition == 3 ? 22 : null,
