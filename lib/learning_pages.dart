@@ -213,6 +213,8 @@ class _OneApMathProgressDashboardState
   int gold = 0;
   String? revisionLesson;
   int revisionPercent = 0;
+  String? dueLessonId;
+  int dueReviewCount = 0;
 
   String t(String fr, String ar, String en) {
     final language = widget.languageCode.toLowerCase();
@@ -236,6 +238,10 @@ class _OneApMathProgressDashboardState
     var silverCount = 0;
     var goldCount = 0;
     String? weakestLesson;
+    String? firstDueLessonId;
+    var dueCount = 0;
+    final today = DateTime.now();
+    final todayKey = DateTime(today.year, today.month, today.day);
     var weakestPercent = 101;
 
     for (final lesson in nibras1ApMathLessons) {
@@ -244,6 +250,12 @@ class _OneApMathProgressDashboardState
       final total = id == '1ap-math-zero' ? 6 : 8;
       final tries = prefs.getInt('nibras_attempts_v1_$id') ?? 0;
       final practice = prefs.getBool('nibras_practice_done_v1_$id') ?? false;
+      final dueRaw = prefs.getString('nibras_srs_due_v1_$id');
+      final dueDate = dueRaw == null ? null : DateTime.tryParse(dueRaw);
+      if (dueDate != null && !DateTime(dueDate.year, dueDate.month, dueDate.day).isAfter(todayKey)) {
+        dueCount++;
+        firstDueLessonId ??= id;
+      }
       final percent = score * 100 / total;
 
       if (percent >= 85) {
@@ -273,6 +285,8 @@ class _OneApMathProgressDashboardState
       gold = goldCount;
       revisionLesson = weakestLesson;
       revisionPercent = weakestPercent == 101 ? 0 : weakestPercent;
+      dueLessonId = firstDueLessonId;
+      dueReviewCount = dueCount;
       loading = false;
     });
   }
@@ -351,6 +365,19 @@ class _OneApMathProgressDashboardState
                             'Next goal: master one more lesson.'),
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
+                  if (dueReviewCount > 0 && dueLessonId != null) ...[
+                    const SizedBox(height: 12),
+                    Card(color: const Color(0xfffff4d6), child: ListTile(
+                      leading: const Icon(Icons.event_available_rounded, color: Color(0xff9b6200)),
+                      title: Text(t('Révisions à faire : $dueReviewCount', 'مراجعات مستحقة: $dueReviewCount', 'Reviews due: $dueReviewCount'), style: const TextStyle(fontWeight: FontWeight.w900)),
+                      subtitle: Text(t('Une notion est prête à être révisée. Fais une courte séance pour la mémoriser durablement.', 'هناك درس جاهز للمراجعة. أنجز جلسة قصيرة لترسيخ المعلومات.', 'A lesson is ready for review. Complete a short session to strengthen memory.')),
+                      trailing: const Icon(Icons.arrow_forward_rounded),
+                      onTap: () {
+                        final lesson = nibras1ApMathLessons.firstWhere((item) => item.id == dueLessonId);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => NibrasPremiumMathLessonPage(lesson: lesson, languageCode: widget.languageCode)));
+                      },
+                    )),
+                  ],
                   if (revisionLesson != null) ...[
                     const SizedBox(height: 8),
                     Container(
