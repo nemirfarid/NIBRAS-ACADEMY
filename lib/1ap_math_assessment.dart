@@ -42,11 +42,11 @@ class _OneApMathAssessmentPageState
       correct: 1,
     ),
     _MathQuestion(
-      fr: 'Combien font 6 - 2 ?',
-      ar: 'كم يساوي 6 - 2 ؟',
-      en: 'What is 6 - 2?',
-      answers: ['3', '4', '5'],
-      correct: 1,
+      fr: 'Une boîte vide contient combien de cubes ?',
+      ar: 'كم مكعباً في علبة فارغة؟',
+      en: 'How many cubes are in an empty box?',
+      answers: ['0', '1', '2'],
+      correct: 0,
     ),
     _MathQuestion(
       fr: 'Quel est le plus grand nombre ?',
